@@ -96,6 +96,25 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 }
 .v-preset:hover:not(:disabled) { border-color: var(--accent, #00ff9c); background: #10251a; }
 .v-preset:disabled { opacity: 0.4; cursor: not-allowed; }
+/* edit mode: chips become removable, tinted amber to signal "tap to delete" */
+.v-preset.v-preset-editing { color: #e0a800; border-color: #6b5510; }
+.v-preset.v-preset-editing:hover { color: #ff9a9a; border-color: #ff6b6b; background: #2a1414; }
+
+/* small icon button to toggle preset editing */
+.v-mini {
+  font: inherit;
+  cursor: pointer;
+  color: var(--accent, #00ff9c);
+  background: #0a140d;
+  border: 1px solid #1f3a2a;
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  line-height: 1;
+}
+.v-mini:hover { border-color: var(--accent, #00ff9c); background: #10251a; }
+.v-mini.active { background: var(--accent, #00ff9c); color: #04140c; border-color: var(--accent, #00ff9c); }
+
+.v-preset-editor { flex-wrap: wrap; }
 
 .v-num {
   font: inherit;

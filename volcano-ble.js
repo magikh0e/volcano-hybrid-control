@@ -46,6 +46,7 @@
   const FILL_SECS = 41;     // standard S&B Easy Valve bag fill (matches the HA script)
   const LADDER = [179, 185, 191, 199, 205, 211, 217, 230]; // Vapesuvius rungs (°C)
   const LADDER_STEP_SECS = 300;   // 5 min per rung, per the HA auto-progress automation
+  const DEFAULT_PRESETS = [179, 185, 191, 199, 205, 211, 217, 230]; // editable quick-set presets (°C)
 
   let device = null, server = null, svc = null, svc3 = null;
   let curTempChar = null, setTempChar = null, prj1Char = null;
@@ -53,6 +54,8 @@
   let ladderTimer = null, ladderElapsed = 0, ladderIdx = -1;
   let target = 190;         // pending target shown in the UI
   let heatOn = false, fanOn = false;
+  let presets = [];         // user-editable quick-set presets (°C), persisted in localStorage
+  let presetEditMode = false;
 
   const $ = (id) => document.getElementById(id);
 
@@ -73,7 +76,8 @@
      "v-cooldisp", "v-vibrate"].forEach((id) => {
       const el = $(id); if (el) el.disabled = !on;
     });
-    document.querySelectorAll(".v-preset, .v-segbtn").forEach((el) => { el.disabled = !on; });
+    document.querySelectorAll(".v-segbtn").forEach((el) => { el.disabled = !on; });
+    renderPresets();   // preset buttons follow connection state (unless editing)
     if (!on) {
       setLed("v-heatled", false); setLed("v-fanled", false);
       const cur = $("v-cur"); if (cur) cur.textContent = "---";
@@ -365,11 +369,98 @@
   }
 
   async function applyPreset(t) {
-    // Vapesuvius ladder rung — set the target and write it (presets are only
+    // Quick-set preset — set the target and write it (presets are only
     // clickable while connected, so setTempChar / svc are available).
     target = Math.min(MAX_T, Math.max(MIN_T, t));
     showTarget();
     await commitTarget();
+  }
+
+  // ---- editable presets -----------------------------------------------------
+
+  function sanitizePresets(arr) {
+    // Round to whole °C, drop anything out of range or non-numeric, dedupe, sort.
+    return [...new Set(arr
+      .map((n) => Math.round(Number(n)))
+      .filter((n) => Number.isFinite(n) && n >= MIN_T && n <= MAX_T))]
+      .sort((a, b) => a - b);
+  }
+
+  function loadPresets() {
+    try {
+      const raw = localStorage.getItem("volcano-presets");
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) { const s = sanitizePresets(arr); if (s.length) return s; }
+      }
+    } catch (e) { /* fall through to defaults */ }
+    return DEFAULT_PRESETS.slice();
+  }
+
+  function savePresets() {
+    try { localStorage.setItem("volcano-presets", JSON.stringify(presets)); } catch (e) { /* ignore */ }
+  }
+
+  function renderPresets() {
+    const box = $("v-presets");
+    if (!box) return;
+    const connected = document.body.classList.contains("v-connected");
+    box.textContent = "";
+    presets.forEach((t) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "v-preset" + (presetEditMode ? " v-preset-editing" : "");
+      b.dataset.temp = String(t);
+      b.textContent = presetEditMode ? (t + "° ×") : (t + "°");
+      b.disabled = presetEditMode ? false : !connected;
+      b.setAttribute("aria-label",
+        presetEditMode ? ("Remove " + t + " °C preset") : ("Set target " + t + " °C"));
+      box.appendChild(b);
+    });
+    if (presetEditMode && !presets.length) {
+      const span = document.createElement("span");
+      span.className = "v-hint";
+      span.textContent = "no presets — add one below";
+      box.appendChild(span);
+    }
+  }
+
+  function togglePresetEdit() {
+    presetEditMode = !presetEditMode;
+    const ed = $("v-preset-editor"); if (ed) ed.hidden = !presetEditMode;
+    const btn = $("v-preset-edit");
+    if (btn) {
+      btn.classList.toggle("active", presetEditMode);
+      btn.setAttribute("aria-pressed", presetEditMode ? "true" : "false");
+    }
+    renderPresets();
+  }
+
+  function removePreset(t) {
+    presets = presets.filter((x) => x !== t);
+    savePresets();
+    renderPresets();
+  }
+
+  function addPreset() {
+    const inp = $("v-preset-add-in"); if (!inp) return;
+    const v = Math.round(Number(inp.value));
+    if (!inp.value.trim() || !Number.isFinite(v) || v < MIN_T || v > MAX_T) {
+      status("Preset must be " + MIN_T + "–" + MAX_T + " °C.", "warn"); return;
+    }
+    if (presets.includes(v)) { status(v + " °C is already a preset.", "warn"); inp.value = ""; return; }
+    presets = sanitizePresets([...presets, v]);
+    savePresets();
+    renderPresets();
+    inp.value = "";
+    status("Added " + v + " °C preset.", "ok");
+  }
+
+  function resetPresets() {
+    presets = DEFAULT_PRESETS.slice();
+    savePresets();
+    renderPresets();
+    status("Presets reset to Vapesuvius defaults.", "ok");
   }
 
   async function toggleHeat() {
@@ -477,7 +568,8 @@
       return;
     }
     showTarget();
-    setConnected(false);
+    presets = loadPresets();
+    setConnected(false);   // also renders the presets
     const bind = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
     bind("v-connect", "click", connect);
     bind("v-disconnect", "click", disconnect);
@@ -492,10 +584,20 @@
     bind("v-led-set", "click", commitBrightness);
     bind("v-cooldisp", "change", (e) => setCoolDisplay(e.target.checked));
     bind("v-vibrate", "change", (e) => setVibration(e.target.checked));
-    const presets = $("v-presets");
-    if (presets) presets.addEventListener("click", (e) => {
+    const presetsBox = $("v-presets");
+    if (presetsBox) presetsBox.addEventListener("click", (e) => {
       const b = e.target.closest("button[data-temp]");
-      if (b && !b.disabled) applyPreset(parseInt(b.dataset.temp, 10));
+      if (!b) return;
+      const t = parseInt(b.dataset.temp, 10);
+      if (presetEditMode) removePreset(t);
+      else if (!b.disabled) applyPreset(t);
+    });
+    bind("v-preset-edit", "click", togglePresetEdit);
+    bind("v-preset-add", "click", addPreset);
+    bind("v-preset-reset", "click", resetPresets);
+    const presetAddIn = $("v-preset-add-in");
+    if (presetAddIn) presetAddIn.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); addPreset(); }
     });
     const units = $("v-units");
     if (units) units.addEventListener("click", (e) => {

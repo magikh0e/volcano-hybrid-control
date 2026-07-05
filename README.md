@@ -22,8 +22,10 @@ python3 -m http.server 8000
 # then open http://localhost:8000
 ```
 
-…or drop the three files (`index.html`, `volcano.css`, `volcano-ble.js`) on any
-static host that serves HTTPS. That's the whole deploy.
+…or drop the folder on any static host that serves HTTPS. That's the whole
+deploy — no build step. Once it's loaded over HTTPS your browser will offer to
+**install it as an app** (or use the in-page Install button); it's a PWA, so it
+also works offline after the first visit.
 
 ## Browser support
 
@@ -46,7 +48,9 @@ so disconnect Home Assistant or the S&amp;B app first (or vice-versa).
   set target (clamped 40–230 °C).
 - **Heat / Fan** toggles, with LEDs that reflect the device's real state (read
   back from the `PRJSTAT1` register every ~2 s, not just what you clicked).
-- **Vapesuvius presets** — one-tap jump to any rung (179–230 °C).
+- **Editable presets** — one-tap set to any preset; the ✎ edit toggle lets you
+  add or remove your own, saved in `localStorage` (defaults to the Vapesuvius
+  rungs, 179–230 °C).
 - **Run ladder** — turns heat on and walks 179 → 230 °C, one rung every 5 min
   (~35 min) with a live countdown.
 - **Fill bag** — runs the pump 41 s (standard S&amp;B Easy Valve) with a countdown
@@ -56,6 +60,9 @@ so disconnect Home Assistant or the S&amp;B app first (or vice-versa).
 - **Settings** — auto-off timer, LED brightness %, display units (°C/°F),
   show-temperature-while-cooling, and vibration alert. "Heat on connect" is
   remembered in `localStorage`.
+- **Installable PWA** — add it to your home screen or desktop; a service worker
+  caches the app shell so it opens offline (the BLE link still needs the device
+  in range).
 
 > ⚠️ **It's a 230 °C heater.** The page clamps the range and confirms before
 > turning heat on, but don't walk away from a running unit.

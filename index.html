@@ -7,6 +7,12 @@
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Control a Storz & Bickel Volcano Hybrid from your browser over Web Bluetooth — temperature, heat, fan, presets, bag fill, ladder, and device settings. No app, no backend. Chromium / Android.">
 <link rel="stylesheet" href="volcano.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#04140c">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Volcano">
 </head>
 <body>
 
@@ -18,6 +24,8 @@
 straight from the browser over <strong class="term">Web Bluetooth</strong> &mdash; the browser is the
 BLE central, talking to the device's GATT directly. No app, no backend, no Home Assistant,
 nothing leaves your machine. Set temperature, toggle heat, toggle the pump.</p>
+
+<p><button id="v-install" class="v-btn" type="button" hidden>&#10515; Install app</button></p>
 
 <pre><strong class="term">Before you click Connect:</strong>
   &mdash; <strong>Chromium only.</strong> Desktop Chrome / Edge / Opera, or Android Chrome.
@@ -61,17 +69,17 @@ desktop Chrome / Edge / Opera or Android Chrome.</p>
   </div>
 
   <div class="v-row v-presets-row">
-    <span class="v-rowlabel">Vapesuvius</span>
-    <div class="v-presets" id="v-presets">
-      <button class="v-preset" type="button" data-temp="179" disabled>179&deg;</button>
-      <button class="v-preset" type="button" data-temp="185" disabled>185&deg;</button>
-      <button class="v-preset" type="button" data-temp="191" disabled>191&deg;</button>
-      <button class="v-preset" type="button" data-temp="199" disabled>199&deg;</button>
-      <button class="v-preset" type="button" data-temp="205" disabled>205&deg;</button>
-      <button class="v-preset" type="button" data-temp="211" disabled>211&deg;</button>
-      <button class="v-preset" type="button" data-temp="217" disabled>217&deg;</button>
-      <button class="v-preset" type="button" data-temp="230" disabled>230&deg;</button>
-    </div>
+    <span class="v-rowlabel">Presets</span>
+    <div class="v-presets" id="v-presets"><!-- rendered from saved presets by volcano-ble.js --></div>
+    <button id="v-preset-edit" class="v-mini" type="button" aria-pressed="false" title="Edit presets" aria-label="Edit presets">&#9998;</button>
+  </div>
+
+  <div class="v-row v-preset-editor" id="v-preset-editor" hidden>
+    <input id="v-preset-add-in" class="v-num" type="number" min="40" max="230" step="1" inputmode="numeric" aria-label="New preset temperature in Celsius">
+    <span class="v-unit">&deg;C</span>
+    <button id="v-preset-add" class="v-btn" type="button">+ Add</button>
+    <button id="v-preset-reset" class="v-btn" type="button">Reset</button>
+    <span class="v-hint">tap a chip to remove &middot; Reset restores Vapesuvius</span>
   </div>
 
   <div class="v-row">
@@ -169,5 +177,27 @@ Live version at <a href="https://magikh0e.pl/pubHomeAutomation/volcano-control.h
 Not affiliated with Storz &amp; Bickel. &mdash; by magikh0e</p>
 
 <script src="volcano-ble.js" defer></script>
+<script>
+  // PWA: register the offline service worker and wire the install button.
+  if ("serviceWorker" in navigator) {
+    addEventListener("load", function () {
+      navigator.serviceWorker.register("service-worker.js").catch(function () {});
+    });
+  }
+  (function () {
+    var deferred = null;
+    var btn = document.getElementById("v-install");
+    addEventListener("beforeinstallprompt", function (e) {
+      e.preventDefault(); deferred = e;
+      if (btn) btn.hidden = false;
+    });
+    if (btn) btn.addEventListener("click", function () {
+      if (!deferred) return;
+      deferred.prompt();
+      deferred.userChoice.finally(function () { deferred = null; btn.hidden = true; });
+    });
+    addEventListener("appinstalled", function () { if (btn) btn.hidden = true; });
+  })();
+</script>
 </body>
 </html>
