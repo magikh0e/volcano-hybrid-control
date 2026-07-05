@@ -74,12 +74,16 @@ desktop Chrome / Edge / Opera or Android Chrome.</p>
     <button id="v-preset-edit" class="v-mini" type="button" aria-pressed="false" title="Edit presets" aria-label="Edit presets">&#9998;</button>
   </div>
 
-  <div class="v-row v-preset-editor" id="v-preset-editor" hidden>
-    <input id="v-preset-add-in" class="v-num" type="number" min="40" max="230" step="1" inputmode="numeric" aria-label="New preset temperature in Celsius">
-    <span class="v-unit">&deg;C</span>
-    <button id="v-preset-add" class="v-btn" type="button">+ Add</button>
-    <button id="v-preset-reset" class="v-btn" type="button">Reset</button>
-    <span class="v-hint">tap a chip to remove &middot; Reset restores Vapesuvius</span>
+  <div class="v-preset-editor" id="v-preset-editor" hidden>
+    <p class="v-preset-help">Presets are your one-tap temperature shortcuts, saved in this browser. Tap a chip above to remove it, or add your own below.</p>
+    <div class="v-row">
+      <span class="v-rowlabel">Add</span>
+      <input id="v-preset-add-in" class="v-num" type="number" min="40" max="230" step="1" inputmode="numeric" aria-label="New preset temperature in Celsius" placeholder="195">
+      <span class="v-unit">&deg;C</span>
+      <button id="v-preset-add" class="v-btn" type="button">+ Add</button>
+      <button id="v-preset-reset" class="v-btn" type="button">Reset</button>
+    </div>
+    <p class="v-preset-help"><strong>Reset</strong> restores the defaults &mdash; the <em>Vapesuvius</em> ladder that steps 179&rarr;230&nbsp;&deg;C through a full-spectrum session.</p>
   </div>
 
   <div class="v-row">

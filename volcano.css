@@ -114,7 +114,9 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-mini:hover { border-color: var(--accent, #00ff9c); background: #10251a; }
 .v-mini.active { background: var(--accent, #00ff9c); color: #04140c; border-color: var(--accent, #00ff9c); }
 
-.v-preset-editor { flex-wrap: wrap; }
+.v-preset-editor { margin: 0.2rem 0 0.6rem; }
+.v-preset-help { opacity: 0.75; font-size: 0.85rem; line-height: 1.5; margin: 0.4rem 0; max-width: 32rem; }
+.v-preset-help em { font-style: normal; color: var(--accent, #00ff9c); }
 
 .v-num {
   font: inherit;
