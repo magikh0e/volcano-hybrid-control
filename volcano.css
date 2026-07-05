@@ -1,0 +1,160 @@
+/* volcano.css — standalone terminal theme + Web Bluetooth control-panel styles.
+   No build step, no framework: one stylesheet, one script, plain HTML. */
+
+:root {
+  --accent: #00ff9c;
+  --bg:     #04140c;
+  --panel:  #0a140d;
+  --edge:   #1f3a2a;
+  --text:   #b6d8c4;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0 auto;
+  max-width: 46rem;
+  padding: 1.4rem 1.1rem 4rem;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.6 ui-monospace, "JetBrains Mono", "Cascadia Code", "SFMono-Regular", Menlo, Consolas, monospace;
+}
+a { color: var(--accent); }
+h1, h2 { color: var(--accent); font-weight: 600; letter-spacing: 0.02em; line-height: 1.25; }
+h1 { font-size: 1.35rem; margin: 1.3rem 0 0.4rem; }
+h2 { font-size: 1.05rem; margin: 2rem 0 0.5rem; }
+img.banner { display: block; width: 100%; height: auto; border: 1px solid var(--edge); border-radius: 8px; }
+pre { white-space: pre-wrap; word-wrap: break-word; margin: 0.8rem 0; }
+code { color: var(--accent); }
+strong.term { color: var(--accent); }
+.sub { opacity: 0.72; }
+hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
+
+.v-panel { max-width: 34rem; margin: 1rem 0; }
+
+.v-readout {
+  display: flex;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.v-readout .v-cell {
+  flex: 1;
+  border: 1px solid #1f3a2a;
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  background: #0a140d;
+}
+.v-readout .v-cell .v-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.v-readout .v-cell .v-value {
+  font-size: 1.9rem;
+  line-height: 1.1;
+  color: var(--accent, #00ff9c);
+}
+
+.v-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin: 0.8rem 0; }
+.v-row .v-rowlabel { min-width: 5.5rem; opacity: 0.85; }
+
+.v-btn {
+  font: inherit;
+  cursor: pointer;
+  color: var(--accent, #00ff9c);
+  background: #0a140d;
+  border: 1px solid var(--accent, #00ff9c);
+  border-radius: 6px;
+  padding: 0.5rem 0.9rem;
+}
+.v-btn:hover:not(:disabled) { background: #10251a; }
+.v-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.v-btn.wide { min-width: 9.5rem; }
+
+.v-step {
+  font: inherit;
+  cursor: pointer;
+  width: 2.6rem;
+  height: 2.6rem;
+  color: var(--accent, #00ff9c);
+  background: #0a140d;
+  border: 1px solid var(--accent, #00ff9c);
+  border-radius: 6px;
+  font-size: 1.3rem;
+}
+.v-step:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.v-presets { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.v-preset {
+  font: inherit;
+  cursor: pointer;
+  color: var(--accent, #00ff9c);
+  background: #0a140d;
+  border: 1px solid #1f3a2a;
+  border-radius: 6px;
+  padding: 0.35rem 0.55rem;
+  min-width: 3.4rem;
+}
+.v-preset:hover:not(:disabled) { border-color: var(--accent, #00ff9c); background: #10251a; }
+.v-preset:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.v-num {
+  font: inherit;
+  width: 4.5rem;
+  color: var(--accent, #00ff9c);
+  background: #0a140d;
+  border: 1px solid var(--accent, #00ff9c);
+  border-radius: 6px;
+  padding: 0.45rem 0.5rem;
+}
+.v-num:disabled { opacity: 0.4; }
+.v-unit { opacity: 0.75; }
+.v-hint { opacity: 0.6; font-size: 0.85rem; }
+
+.v-check { display: inline-flex; align-items: center; gap: 0.35rem; opacity: 0.85; cursor: pointer; }
+.v-check input { accent-color: var(--accent, #00ff9c); }
+.v-check input:disabled { opacity: 0.4; }
+
+.v-seg { display: inline-flex; border: 1px solid #1f3a2a; border-radius: 6px; overflow: hidden; }
+.v-segbtn {
+  font: inherit;
+  cursor: pointer;
+  color: var(--accent, #00ff9c);
+  background: #0a140d;
+  border: 0;
+  border-left: 1px solid #1f3a2a;
+  padding: 0.4rem 0.85rem;
+}
+.v-segbtn:first-child { border-left: 0; }
+.v-segbtn.active { background: var(--accent, #00ff9c); color: #04140c; }
+.v-segbtn:hover:not(:disabled):not(.active) { background: #10251a; }
+.v-segbtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.v-led {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  vertical-align: middle;
+}
+.v-led.on {
+  background: var(--accent, #00ff9c);
+  border-color: var(--accent, #00ff9c);
+  box-shadow: 0 0 6px var(--accent, #00ff9c);
+}
+
+#v-status {
+  margin-top: 0.8rem;
+  padding: 0.5rem 0.7rem;
+  border-left: 3px solid #1f3a2a;
+  background: #0a140d;
+  min-height: 1.2rem;
+}
+#v-status[data-kind="ok"]   { border-left-color: var(--accent, #00ff9c); }
+#v-status[data-kind="warn"] { border-left-color: #e0a800; }
+#v-status[data-kind="err"]  { border-left-color: #ff6b6b; color: #ff9a9a; }
+
+.v-note { color: #ff6b6b; }
+
+/* Hide the live controls until connected is not required — JS toggles state. */

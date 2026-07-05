@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Volcano Hybrid &mdash; Web Bluetooth Control</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Control a Storz & Bickel Volcano Hybrid from your browser over Web Bluetooth — temperature, heat, fan, presets, bag fill, ladder, and device settings. No app, no backend. Chromium / Android.">
+<link rel="stylesheet" href="volcano.css">
+</head>
+<body>
+
+<img class="banner" src="banner.webp" alt="Volcano Hybrid &mdash; Web BLE Controller">
+
+<h1>Volcano Hybrid &mdash; Web Bluetooth Control</h1>
+
+<p class="sub">Drive a <a href="https://www.storz-bickel.com/" rel="noopener">Storz &amp; Bickel Volcano Hybrid</a>
+straight from the browser over <strong class="term">Web Bluetooth</strong> &mdash; the browser is the
+BLE central, talking to the device's GATT directly. No app, no backend, no Home Assistant,
+nothing leaves your machine. Set temperature, toggle heat, toggle the pump.</p>
+
+<pre><strong class="term">Before you click Connect:</strong>
+  &mdash; <strong>Chromium only.</strong> Desktop Chrome / Edge / Opera, or Android Chrome.
+    No iOS, no Firefox, no Safari &mdash; they don't implement Web Bluetooth.
+  &mdash; <strong>Secure context.</strong> Serve over HTTPS, or run it from http://localhost.
+  &mdash; <strong>Local, not remote.</strong> Works only within Bluetooth range of the
+    Volcano. This is not remote control.
+  &mdash; <strong>One connection at a time.</strong> The Volcano allows a single BLE link.
+    If Home Assistant or the S&amp;B app is connected, this page can't be &mdash;
+    disconnect that first (or vice-versa).
+  &mdash; <strong>It's a 230&nbsp;&deg;C heater.</strong> The page clamps 40&ndash;230&nbsp;&deg;C and confirms
+    before turning heat on, but don't walk away from a running unit.</pre>
+
+<p id="v-unsupported" class="v-note" hidden>This browser doesn't support Web Bluetooth. Open this page in
+desktop Chrome / Edge / Opera or Android Chrome.</p>
+
+<div id="v-panel" class="v-panel">
+
+  <div class="v-row">
+    <button id="v-connect" class="v-btn wide" type="button">&#128268; Connect Volcano</button>
+    <button id="v-disconnect" class="v-btn" type="button" hidden>Disconnect</button>
+    <label class="v-check"><input type="checkbox" id="v-autoheat"> heat on connect</label>
+  </div>
+
+  <div class="v-readout">
+    <div class="v-cell">
+      <div class="v-label">Current</div>
+      <div class="v-value" id="v-cur">---</div>
+    </div>
+    <div class="v-cell">
+      <div class="v-label">Target</div>
+      <div class="v-value" id="v-set">190 &deg;C</div>
+    </div>
+  </div>
+
+  <div class="v-row">
+    <span class="v-rowlabel">Target</span>
+    <button id="v-tminus" class="v-step" type="button" disabled aria-label="Lower target">&minus;</button>
+    <button id="v-tplus" class="v-step" type="button" disabled aria-label="Raise target">+</button>
+    <button id="v-setbtn" class="v-btn" type="button" disabled>Set target</button>
+  </div>
+
+  <div class="v-row v-presets-row">
+    <span class="v-rowlabel">Vapesuvius</span>
+    <div class="v-presets" id="v-presets">
+      <button class="v-preset" type="button" data-temp="179" disabled>179&deg;</button>
+      <button class="v-preset" type="button" data-temp="185" disabled>185&deg;</button>
+      <button class="v-preset" type="button" data-temp="191" disabled>191&deg;</button>
+      <button class="v-preset" type="button" data-temp="199" disabled>199&deg;</button>
+      <button class="v-preset" type="button" data-temp="205" disabled>205&deg;</button>
+      <button class="v-preset" type="button" data-temp="211" disabled>211&deg;</button>
+      <button class="v-preset" type="button" data-temp="217" disabled>217&deg;</button>
+      <button class="v-preset" type="button" data-temp="230" disabled>230&deg;</button>
+    </div>
+  </div>
+
+  <div class="v-row">
+    <span class="v-rowlabel">Auto</span>
+    <button id="v-ladder" class="v-btn wide" type="button" disabled>&#9654; Run ladder</button>
+  </div>
+
+  <div class="v-row">
+    <span class="v-rowlabel">Heat <span id="v-heatled" class="v-led"></span></span>
+    <button id="v-heat" class="v-btn wide" type="button" disabled>&#9211; Heat ON</button>
+  </div>
+
+  <div class="v-row">
+    <span class="v-rowlabel">Fan <span id="v-fanled" class="v-led"></span></span>
+    <button id="v-fan" class="v-btn wide" type="button" disabled>&#11034; Fan ON</button>
+  </div>
+
+  <div class="v-row">
+    <span class="v-rowlabel">Bag</span>
+    <button id="v-fill" class="v-btn wide" type="button" disabled>&#9201; Fill bag (41s)</button>
+  </div>
+
+  <div id="v-status" aria-live="polite">Ready.</div>
+
+</div>
+
+<h2 id="device">[ Device ]</h2>
+
+<pre id="v-device">Connect to read serial number, firmware versions, and hours of operation.</pre>
+
+<h2 id="settings">[ Settings ]</h2>
+
+<div id="v-settings" class="v-panel">
+  <div class="v-row">
+    <span class="v-rowlabel">Auto-off</span>
+    <input id="v-shutoff-in" class="v-num" type="number" min="1" max="480" step="1" inputmode="numeric" aria-label="Auto-off minutes" disabled>
+    <span class="v-unit">min</span>
+    <button id="v-shutoff-set" class="v-btn" type="button" disabled>Set</button>
+    <span class="v-hint" id="v-shutoff-cur"></span>
+  </div>
+  <div class="v-row">
+    <span class="v-rowlabel">LED Brightness %</span>
+    <input id="v-led-in" class="v-num" type="number" min="0" max="100" step="1" inputmode="numeric" aria-label="LED brightness percent (0-100)" disabled>
+    <button id="v-led-set" class="v-btn" type="button" disabled>Set</button>
+    <span class="v-hint" id="v-led-cur"></span>
+  </div>
+  <div class="v-row">
+    <span class="v-rowlabel">Units</span>
+    <div class="v-seg" id="v-units" role="group" aria-label="Temperature units shown on the device">
+      <button class="v-segbtn" type="button" data-unit="C" aria-pressed="false" disabled>&deg;C</button>
+      <button class="v-segbtn" type="button" data-unit="F" aria-pressed="false" disabled>&deg;F</button>
+    </div>
+    <span class="v-hint" id="v-units-cur"></span>
+  </div>
+  <div class="v-row">
+    <label class="v-check"><input type="checkbox" id="v-cooldisp" disabled> Show temperature while cooling</label>
+  </div>
+  <div class="v-row">
+    <label class="v-check"><input type="checkbox" id="v-vibrate" disabled> Vibration alert (buzz on target reached)</label>
+  </div>
+  <p class="v-hint">These change the Volcano's own screen and haptics &mdash; the panel above always reads &deg;C, since the device reports temperature in &deg;C over BLE regardless.</p>
+</div>
+
+<h2 id="notes">[ Notes ]</h2>
+
+<pre>The GATT it uses, all under service <code>10110000-5354-4f52-5a26-4249434b454c</code>
+(the tail spells <code>STORZ&amp;BICKEL</code> in ASCII):
+
+  current temp   <code>&hellip;0001</code>  read / notify, uint16 LE &divide; 10
+  set temp       <code>&hellip;0003</code>  write (target &times; 10), uint16 LE
+  heat on / off  <code>&hellip;000f</code> / <code>&hellip;0010</code>  write [1] / [0]
+  fan on / off   <code>&hellip;0013</code> / <code>&hellip;0014</code>  write [1] / [0]
+  status regs    service <code>10100000&hellip;</code>, PRJSTAT1 masks (heat 32, pump 8192)
+  setting regs   PRJSTAT2 <code>&hellip;000d</code> (&deg;F <code>0x200</code>, cooling-display <code>0x1000</code>),
+                 PRJSTAT3 <code>&hellip;000e</code> (vibration <code>0x400</code>)
+
+Heat and fan state are read back from the PRJSTAT1 register every couple of
+seconds, so the indicators reflect the device, not just what you clicked.
+
+Units, cooling-display, and vibration are active-low bits in PRJSTAT2/3: write
+the mask alone to clear a bit (feature on), or <code>0x10000 | mask</code> to set it (off).
+They change the Volcano's own display and buzzer, not this panel.
+
+Fill bag runs the pump for 41&nbsp;s with a countdown (standard S&amp;B Easy Valve) &mdash;
+heat to your target first, and give XL bags 75&ndash;100&nbsp;s.
+
+Run ladder turns heat on and walks 179&rarr;230&nbsp;&deg;C, one rung every 5&nbsp;min
+(~35&nbsp;min total) with a live countdown.</pre>
+
+<hr>
+
+<p class="sub">BLE protocol reverse-engineered by
+<a href="https://github.com/SavageNL/home-assistant-volcano-hybrid" rel="noopener">SavageNL/home-assistant-volcano-hybrid</a>.
+Live version at <a href="https://magikh0e.pl/pubHomeAutomation/volcano-control.html" rel="noopener">magikh0e.pl</a>.
+Not affiliated with Storz &amp; Bickel. &mdash; by magikh0e</p>
+
+<script src="volcano-ble.js" defer></script>
+</body>
+</html>
