@@ -10,6 +10,8 @@ One HTML file, one stylesheet, one script. No build step, no dependencies.
 
 **[▶ Live version](https://magikh0e.pl/pubHomeAutomation/volcano-control.html)**
 
+<img src="WebUIExample.png" alt="The Volcano Hybrid control panel: connect, temperature readout and stepper, editable presets, heat/fan/bag controls" width="420">
+
 ---
 
 ## Run it
