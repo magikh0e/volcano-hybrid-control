@@ -5,7 +5,7 @@
 // only the UI is cached, not the BLE session). Bump CACHE on any asset change
 // to invalidate the old shell.
 
-const CACHE = "volcano-hybrid-control-v2";
+const CACHE = "volcano-hybrid-control-v3";
 const ASSETS = [
   "./",
   "./index.html",

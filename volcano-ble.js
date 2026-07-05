@@ -9,7 +9,7 @@
 // SavageNL/home-assistant-volcano-hybrid. The service-UUID tail
 // "5354-4f52-5a26-4249434b454c" is "STORZ&BICKEL" in ASCII.
 //
-// by magikh0e -- 07.2026  (proof of concept — test near the device)
+// by magikh0e -- 07.2026  (tested on a real Volcano Hybrid)
 
 (() => {
   "use strict";
