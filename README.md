@@ -57,6 +57,11 @@ so disconnect Home Assistant or the S&amp;B app first (or vice-versa).
   (~35 min) with a live countdown.
 - **Fill bag** — runs the pump 41 s (standard S&amp;B Easy Valve) with a countdown
   and auto-stop.
+- **Session readout** — while heating, shows how long it's been running and a
+  live auto-off countdown (the minutes left before it shuts itself down).
+- **Error surfacing** — flags the device's `PRJSTAT1` / `PRJSTAT2` error bits if
+  the unit faults.
+- **Reconnect** — one-tap reconnect to the last device, skipping the chooser.
 - **Device info** — serial number, Volcano firmware, Bluetooth firmware, hours
   of operation.
 - **Settings** — auto-off timer, LED brightness %, display units (°C/°F),

@@ -177,5 +177,12 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 #v-status[data-kind="err"]  { border-left-color: #ff6b6b; color: #ff9a9a; }
 
 .v-note { color: #ff6b6b; }
+.v-error {
+  margin: 0.7rem 0 0;
+  padding: 0.5rem 0.7rem;
+  border-left: 3px solid #ff6b6b;
+  background: #2a1414;
+  color: #ff9a9a;
+}
 
 /* Hide the live controls until connected is not required — JS toggles state. */

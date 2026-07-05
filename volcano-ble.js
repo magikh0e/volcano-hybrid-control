@@ -29,6 +29,7 @@
   const HEAT_HRS = "10110015-5354-4f52-5a26-4249434b454c"; // main svc, heat hours (uint LE)
   const HEAT_MIN = "10110016-5354-4f52-5a26-4249434b454c"; // main svc, heat minutes (uint LE)
   const SHUT_OFF = "1011000d-5354-4f52-5a26-4249434b454c"; // main svc, auto-off (seconds LE; set = min*60)
+  const AUTO_OFF = "1011000c-5354-4f52-5a26-4249434b454c"; // main svc, live auto-off remaining (seconds LE)
   const LED_BRIGHT = "10110005-5354-4f52-5a26-4249434b454c"; // main svc, LED brightness (LE)
   const PRJ2     = "1010000d-5354-4f52-5a26-4249434b454c"; // svc3 PRJSTAT2: units, cooling-display
   const PRJ3     = "1010000e-5354-4f52-5a26-4249434b454c"; // svc3 PRJSTAT3: vibration
@@ -38,6 +39,8 @@
   const MASK_FAHRENHEIT   = 0x0200; // PRJSTAT2: set = device shows °F  (clear = °C)
   const MASK_DISPLAY_COOL = 0x1000; // PRJSTAT2: clear = show temp while cooling
   const MASK_VIBRATION    = 0x0400; // PRJSTAT3: clear = vibration alert on
+  const MASK_ERR1 = 16408; // PRJSTAT1 error bits (HA prv1_error)
+  const MASK_ERR2 = 59;    // PRJSTAT2 error bits (HA prv2_error)
   // Register write convention (4-byte LE): write the mask alone to CLEAR the
   // bit; write (REG_SET | mask) to SET it. Matches the HA integration exactly.
   const REG_SET = 0x10000;
@@ -49,11 +52,12 @@
   const DEFAULT_PRESETS = [179, 185, 191, 199, 205, 211, 217, 230]; // editable quick-set presets (°C)
 
   let device = null, server = null, svc = null, svc3 = null;
-  let curTempChar = null, setTempChar = null, prj1Char = null;
+  let curTempChar = null, setTempChar = null, prj1Char = null, prj2Char = null;
   let pollTimer = null, fillTimer = null, fillLeft = 0;
   let ladderTimer = null, ladderElapsed = 0, ladderIdx = -1;
   let target = 190;         // pending target shown in the UI
   let heatOn = false, fanOn = false;
+  let shutOffMin = null;    // last-known auto-off setting (min), used by the session timer
   let presets = [];         // user-editable quick-set presets (°C), persisted in localStorage
   let presetEditMode = false;
 
@@ -68,9 +72,10 @@
 
   function setConnected(on) {
     document.body.classList.toggle("v-connected", on);
-    const c = $("v-connect"), d = $("v-disconnect");
+    const c = $("v-connect"), d = $("v-disconnect"), rc = $("v-reconnect");
     if (c) c.hidden = on;
     if (d) d.hidden = !on;
+    if (rc) rc.hidden = on || !device;   // offer Reconnect only when disconnected with a known device
     ["v-tminus", "v-tplus", "v-setbtn", "v-heat", "v-fan", "v-fill", "v-ladder",
      "v-shutoff-in", "v-shutoff-set", "v-led-in", "v-led-set",
      "v-cooldisp", "v-vibrate"].forEach((id) => {
@@ -81,6 +86,8 @@
     if (!on) {
       setLed("v-heatled", false); setLed("v-fanled", false);
       const cur = $("v-cur"); if (cur) cur.textContent = "---";
+      const sess = $("v-session"); if (sess) sess.textContent = "—";
+      const err = $("v-error"); if (err) { err.hidden = true; err.textContent = ""; }
     }
   }
 
@@ -135,9 +142,10 @@
 
   async function pollStatus() {
     try {
+      let reg = null, p2 = null;
       if (prj1Char) {
         const dv = await prj1Char.readValue();
-        const reg = dv.getUint32(0, true);
+        reg = dv.getUint32(0, true);
         heatOn = (reg & MASK_HEAT) !== 0;
         fanOn = (reg & MASK_PUMP) !== 0;
         setLed("v-heatled", heatOn);
@@ -146,11 +154,54 @@
         if (hb) hb.textContent = heatOn ? "⏻ Heat OFF" : "⏻ Heat ON";
         if (fb) fb.textContent = fanOn ? "⬚ Fan OFF" : "⬚ Fan ON";
       }
+      if (prj2Char) {
+        try { p2 = leUint(await prj2Char.readValue()); } catch (e) { /* keep null */ }
+      }
+      updateErrors(reg, p2);
       if (curTempChar) {
         const dv = await curTempChar.readValue();
         const c = $("v-cur"); if (c) c.textContent = Math.round(parseTemp(dv)) + " °C";
       }
+      await updateTimers();
     } catch (e) { /* transient read errors are fine between polls */ }
+  }
+
+  function fmtDur(s) {
+    s = Math.max(0, Math.round(s));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    const pad = (n) => String(n).padStart(2, "0");
+    return h > 0 ? (h + ":" + pad(m) + ":" + pad(sec)) : (m + ":" + pad(sec));
+  }
+
+  // Surface the device's error flags (HA prv1_error / prv2_error).
+  function updateErrors(reg, p2) {
+    const el = $("v-error"); if (!el) return;
+    const e1 = reg != null && (reg & MASK_ERR1) !== 0;
+    const e2 = p2 != null && (p2 & MASK_ERR2) !== 0;
+    if (e1 || e2) {
+      el.hidden = false;
+      el.textContent = "⚠ Device error flag set" +
+        (e1 && e2 ? " (PRJSTAT1 & 2)" : e1 ? " (PRJSTAT1)" : " (PRJSTAT2)");
+    } else {
+      el.hidden = true; el.textContent = "";
+    }
+  }
+
+  // Session runtime + live auto-off countdown, only meaningful while heating.
+  // The device's auto-off characteristic holds the seconds remaining; on-time
+  // is the configured duration minus that, exactly as the HA integration derives it.
+  async function updateTimers() {
+    const el = $("v-session"); if (!el) return;
+    if (!heatOn || !svc) { el.textContent = "idle"; return; }
+    try {
+      const remain = leUint(await (await svc.getCharacteristic(AUTO_OFF)).readValue());
+      if (remain > 0 && shutOffMin != null) {
+        const on = Math.max(0, shutOffMin * 60 - remain);
+        el.textContent = "running " + fmtDur(on) + " · auto-off in " + fmtDur(remain);
+      } else {
+        el.textContent = "running";
+      }
+    } catch (e) { /* leave the last value on a transient read error */ }
   }
 
   async function writeU16(uuid, value) {
@@ -218,6 +269,7 @@
     };
     const off = await rd(SHUT_OFF, (dv) => Math.round(leUint(dv) / 60));
     const led = await rd(LED_BRIGHT, leUint);
+    if (off != null) shutOffMin = off;   // cache for the session timer
     const oi = $("v-shutoff-in"), oc = $("v-shutoff-cur");
     if (oi && off != null) oi.value = off;
     if (oc) oc.textContent = off != null ? "now " + off + " min" : "";
@@ -247,6 +299,7 @@
     mins = Math.min(480, Math.max(1, mins)); inp.value = mins;
     try {
       await writeU16(SHUT_OFF, mins * 60);
+      shutOffMin = mins;   // keep the session timer in sync
       const oc = $("v-shutoff-cur"); if (oc) oc.textContent = "now " + mins + " min";
       status("Auto-off set to " + mins + " min.", "ok");
     } catch (e) { status("Auto-off set failed: " + (e.message || e), "err"); }
@@ -277,7 +330,8 @@
     document.querySelectorAll("#v-units .v-segbtn").forEach((b) => {
       b.classList.remove("active"); b.setAttribute("aria-pressed", "false");
     });
-    server = svc = svc3 = curTempChar = setTempChar = prj1Char = null;
+    server = svc = svc3 = curTempChar = setTempChar = prj1Char = prj2Char = null;
+    shutOffMin = null;
     setConnected(false);
     status("Disconnected.", "warn");
   }
@@ -300,51 +354,66 @@
         optionalServices: [SVC, SVC3],
       });
       device.addEventListener("gattserverdisconnected", onDisconnected);
-      status("Connecting…");
-      server = await device.gatt.connect();
-      svc = await server.getPrimaryService(SVC);
-      try { svc3 = await server.getPrimaryService(SVC3); } catch (e) { svc3 = null; }
-
-      curTempChar = await svc.getCharacteristic(CUR_TEMP);
-      setTempChar = await svc.getCharacteristic(SET_TEMP);
-      if (svc3) { try { prj1Char = await svc3.getCharacteristic(PRJ1); } catch (e) { prj1Char = null; } }
-
-      // Live current-temperature via notifications.
-      try {
-        await curTempChar.startNotifications();
-        curTempChar.addEventListener("characteristicvaluechanged", (ev) => {
-          const c = $("v-cur");
-          if (c) c.textContent = Math.round(parseTemp(ev.target.value)) + " °C";
-        });
-      } catch (e) { /* fall back to polling below */ }
-
-      // Seed the target from the device's current set-point.
-      try {
-        const dv = await setTempChar.readValue();
-        target = Math.min(MAX_T, Math.max(MIN_T, Math.round(parseTemp(dv))));
-        showTarget();
-      } catch (e) { /* keep the default */ }
-
-      setConnected(true);
-      status("Connected to " + (device.name || "Volcano") + ".", "ok");
-      await pollStatus();
-      readDeviceInfo();      // fills the Device section (serial / firmware / hours)
-      readSettings();        // fills the Settings section (auto-off / LED)
-      const ah = $("v-autoheat");
-      if (ah && ah.checked) {
-        // Opt-in only: the user ticked "heat on connect", so no confirm here.
-        try {
-          await write(HEAT_ON, [1]); heatOn = true; setLed("v-heatled", true);
-          status("Connected — heater on (auto).", "ok");
-        } catch (e) { /* leave heat off on error */ }
-      }
-      pollTimer = setInterval(pollStatus, 2000);
+      await openDevice();
     } catch (e) {
       if (e && e.name === "NotFoundError")
         status("No Volcano selected. If it isn't listed, disconnect Home Assistant or the S&B app first — the Volcano allows only one connection.", "warn");
       else
         status("Connect failed: " + (e.message || e), "err");
     }
+  }
+
+  // Reconnect to the last device without re-opening the chooser (HA's reconnect).
+  async function reconnect() {
+    if (!device) return connect();   // nothing retained — fall back to the picker
+    try { await openDevice(); }
+    catch (e) { status("Reconnect failed: " + (e.message || e) + " — try Connect.", "err"); }
+  }
+
+  // Open the GATT connection on the already-selected `device` and wire up the UI.
+  async function openDevice() {
+    status("Connecting…");
+    server = await device.gatt.connect();
+    svc = await server.getPrimaryService(SVC);
+    try { svc3 = await server.getPrimaryService(SVC3); } catch (e) { svc3 = null; }
+
+    curTempChar = await svc.getCharacteristic(CUR_TEMP);
+    setTempChar = await svc.getCharacteristic(SET_TEMP);
+    if (svc3) {
+      try { prj1Char = await svc3.getCharacteristic(PRJ1); } catch (e) { prj1Char = null; }
+      try { prj2Char = await svc3.getCharacteristic(PRJ2); } catch (e) { prj2Char = null; }
+    }
+
+    // Live current-temperature via notifications.
+    try {
+      await curTempChar.startNotifications();
+      curTempChar.addEventListener("characteristicvaluechanged", (ev) => {
+        const c = $("v-cur");
+        if (c) c.textContent = Math.round(parseTemp(ev.target.value)) + " °C";
+      });
+    } catch (e) { /* fall back to polling below */ }
+
+    // Seed the target from the device's current set-point.
+    try {
+      const dv = await setTempChar.readValue();
+      target = Math.min(MAX_T, Math.max(MIN_T, Math.round(parseTemp(dv))));
+      showTarget();
+    } catch (e) { /* keep the default */ }
+
+    setConnected(true);
+    status("Connected to " + (device.name || "Volcano") + ".", "ok");
+    await pollStatus();
+    readDeviceInfo();      // fills the Device section (serial / firmware / hours)
+    readSettings();        // fills the Settings section (auto-off / LED)
+    const ah = $("v-autoheat");
+    if (ah && ah.checked) {
+      // Opt-in only: the user ticked "heat on connect", so no confirm here.
+      try {
+        await write(HEAT_ON, [1]); heatOn = true; setLed("v-heatled", true);
+        status("Connected — heater on (auto).", "ok");
+      } catch (e) { /* leave heat off on error */ }
+    }
+    pollTimer = setInterval(pollStatus, 2000);
   }
 
   async function disconnect() {
@@ -572,6 +641,7 @@
     setConnected(false);   // also renders the presets
     const bind = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
     bind("v-connect", "click", connect);
+    bind("v-reconnect", "click", reconnect);
     bind("v-disconnect", "click", disconnect);
     bind("v-tminus", "click", () => bumpTarget(-STEP));
     bind("v-tplus", "click", () => bumpTarget(STEP));
