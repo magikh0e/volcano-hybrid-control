@@ -6,12 +6,16 @@ Control a **Storz &amp; Bickel Volcano Hybrid** straight from your browser over
 **Web Bluetooth** — no app, no backend, no Home Assistant. The browser is the BLE
 central and talks to the device's GATT directly; nothing leaves your machine.
 
-One HTML file, one stylesheet, one script. No build step, no dependencies.
+Just static files — HTML, CSS, and a little vanilla JS. No build step, no
+framework, no dependencies; installable as a PWA and works offline.
 
 **Live:** [**volcano.magikh0e.pl**](https://volcano.magikh0e.pl/) — the standalone,
 installable app · also [embedded on magikh0e.pl](https://magikh0e.pl/pubHomeAutomation/volcano-control.html)
 
+The control panel and the workflow editor:
+
 <img src="WebUIExample.png" alt="The Volcano Hybrid control panel: connect, temperature readout and stepper, editable presets, heat/fan/bag controls" width="420">
+<img src="WorkFlowExample.png" alt="The workflow editor: a Conditional Temp Set action with an if→then→wait ladder plus a Set LED Brightness action" width="440">
 
 ---
 
