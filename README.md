@@ -12,11 +12,12 @@ framework, no dependencies; installable as a PWA and works offline.
 **Live:** [**volcano.magikh0e.pl**](https://volcano.magikh0e.pl/) — the standalone,
 installable app · also [embedded on magikh0e.pl](https://magikh0e.pl/pubHomeAutomation/volcano-control.html)
 
-The three tabs — control, settings, and the workflow editor:
+The tabs — control, settings, the workflow editor, and the console:
 
 <img src="WebUIExample.png" alt="Control tab: connect, temperature readout and stepper, editable presets, heat/fan/bag controls" width="400">
 <img src="settingstab.png" alt="Settings tab: device info, auto-off timer, LED brightness, °C/°F units, cooling-display and vibration toggles" width="400">
 <img src="WorkFlowExample.png" alt="Workflows tab: the editor with a Conditional Temp Set if→then→wait ladder plus a Set LED Brightness action" width="420">
+<img src="ConsoleExample.png" alt="Console tab: a terminal REPL showing the help command listing the Volcano scripting language" width="420">
 
 ---
 
