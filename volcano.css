@@ -2,11 +2,11 @@
    No build step, no framework: one stylesheet, one script, plain HTML. */
 
 :root {
-  --accent: #00ff9c;
-  --bg:     #04140c;
+  --accent: #e08a3c;
+  --bg:     #0a0a0a;
   --panel:  #0a140d;
   --edge:   #1f3a2a;
-  --text:   #b6d8c4;
+  --text:   #b0b0b0;
 }
 * { box-sizing: border-box; }
 body {
@@ -51,7 +51,7 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-readout .v-cell .v-value {
   font-size: 1.9rem;
   line-height: 1.1;
-  color: var(--accent, #00ff9c);
+  color: var(--accent, #e08a3c);
 }
 
 .v-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin: 0.8rem 0; }
@@ -60,9 +60,9 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-btn {
   font: inherit;
   cursor: pointer;
-  color: var(--accent, #00ff9c);
+  color: var(--accent, #e08a3c);
   background: #0a140d;
-  border: 1px solid var(--accent, #00ff9c);
+  border: 1px solid var(--accent, #e08a3c);
   border-radius: 6px;
   padding: 0.5rem 0.9rem;
 }
@@ -75,9 +75,9 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
   cursor: pointer;
   width: 2.6rem;
   height: 2.6rem;
-  color: var(--accent, #00ff9c);
+  color: var(--accent, #e08a3c);
   background: #0a140d;
-  border: 1px solid var(--accent, #00ff9c);
+  border: 1px solid var(--accent, #e08a3c);
   border-radius: 6px;
   font-size: 1.3rem;
 }
@@ -87,14 +87,14 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-preset {
   font: inherit;
   cursor: pointer;
-  color: var(--accent, #00ff9c);
+  color: var(--accent, #e08a3c);
   background: #0a140d;
   border: 1px solid #1f3a2a;
   border-radius: 6px;
   padding: 0.35rem 0.55rem;
   min-width: 3.4rem;
 }
-.v-preset:hover:not(:disabled) { border-color: var(--accent, #00ff9c); background: #10251a; }
+.v-preset:hover:not(:disabled) { border-color: var(--accent, #e08a3c); background: #10251a; }
 .v-preset:disabled { opacity: 0.4; cursor: not-allowed; }
 /* edit mode: chips become removable, tinted amber to signal "tap to delete" */
 .v-preset.v-preset-editing { color: #e0a800; border-color: #6b5510; }
@@ -104,26 +104,26 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-mini {
   font: inherit;
   cursor: pointer;
-  color: var(--accent, #00ff9c);
+  color: var(--accent, #e08a3c);
   background: #0a140d;
   border: 1px solid #1f3a2a;
   border-radius: 6px;
   padding: 0.3rem 0.5rem;
   line-height: 1;
 }
-.v-mini:hover { border-color: var(--accent, #00ff9c); background: #10251a; }
-.v-mini.active { background: var(--accent, #00ff9c); color: #04140c; border-color: var(--accent, #00ff9c); }
+.v-mini:hover { border-color: var(--accent, #e08a3c); background: #10251a; }
+.v-mini.active { background: var(--accent, #e08a3c); color: #04140c; border-color: var(--accent, #e08a3c); }
 
 .v-preset-editor { margin: 0.2rem 0 0.6rem; }
 .v-preset-help { opacity: 0.75; font-size: 0.85rem; line-height: 1.5; margin: 0.4rem 0; max-width: 32rem; }
-.v-preset-help em { font-style: normal; color: var(--accent, #00ff9c); }
+.v-preset-help em { font-style: normal; color: var(--accent, #e08a3c); }
 
 .v-num {
   font: inherit;
   width: 4.5rem;
-  color: var(--accent, #00ff9c);
+  color: var(--accent, #e08a3c);
   background: #0a140d;
-  border: 1px solid var(--accent, #00ff9c);
+  border: 1px solid var(--accent, #e08a3c);
   border-radius: 6px;
   padding: 0.45rem 0.5rem;
 }
@@ -132,21 +132,21 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-hint { opacity: 0.6; font-size: 0.85rem; }
 
 .v-check { display: inline-flex; align-items: center; gap: 0.35rem; opacity: 0.85; cursor: pointer; }
-.v-check input { accent-color: var(--accent, #00ff9c); }
+.v-check input { accent-color: var(--accent, #e08a3c); }
 .v-check input:disabled { opacity: 0.4; }
 
 .v-seg { display: inline-flex; border: 1px solid #1f3a2a; border-radius: 6px; overflow: hidden; }
 .v-segbtn {
   font: inherit;
   cursor: pointer;
-  color: var(--accent, #00ff9c);
+  color: var(--accent, #e08a3c);
   background: #0a140d;
   border: 0;
   border-left: 1px solid #1f3a2a;
   padding: 0.4rem 0.85rem;
 }
 .v-segbtn:first-child { border-left: 0; }
-.v-segbtn.active { background: var(--accent, #00ff9c); color: #04140c; }
+.v-segbtn.active { background: var(--accent, #e08a3c); color: #04140c; }
 .v-segbtn:hover:not(:disabled):not(.active) { background: #10251a; }
 .v-segbtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -160,9 +160,9 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
   vertical-align: middle;
 }
 .v-led.on {
-  background: var(--accent, #00ff9c);
-  border-color: var(--accent, #00ff9c);
-  box-shadow: 0 0 6px var(--accent, #00ff9c);
+  background: var(--accent, #e08a3c);
+  border-color: var(--accent, #e08a3c);
+  box-shadow: 0 0 6px var(--accent, #e08a3c);
 }
 
 #v-status {
@@ -172,7 +172,7 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
   background: #0a140d;
   min-height: 1.2rem;
 }
-#v-status[data-kind="ok"]   { border-left-color: var(--accent, #00ff9c); }
+#v-status[data-kind="ok"]   { border-left-color: var(--accent, #e08a3c); }
 #v-status[data-kind="warn"] { border-left-color: #e0a800; }
 #v-status[data-kind="err"]  { border-left-color: #ff6b6b; color: #ff9a9a; }
 
@@ -191,24 +191,24 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
   border: 1px solid #1f3a2a; border-radius: 8px;
   padding: 0.7rem; margin: 0.7rem 0; background: #0a140d;
 }
-.v-wf-card.running { border-color: var(--accent, #00ff9c); }
+.v-wf-card.running { border-color: var(--accent, #e08a3c); }
 .v-wf-head { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
 .v-wf-name {
-  flex: 1; min-width: 8rem; font: inherit; color: var(--accent, #00ff9c);
+  flex: 1; min-width: 8rem; font: inherit; color: var(--accent, #e08a3c);
   background: #04140c; border: 1px solid #1f3a2a; border-radius: 6px; padding: 0.4rem 0.5rem;
 }
 .v-wf-run {
   margin: 0.5rem 0; padding: 0.4rem 0.6rem; font-size: 0.9rem;
-  border-left: 3px solid var(--accent, #00ff9c); background: #04140c;
+  border-left: 3px solid var(--accent, #e08a3c); background: #04140c;
 }
 .v-wf-actions { margin: 0.6rem 0; }
 .v-wf-action { border: 1px solid #14261a; border-radius: 6px; padding: 0.5rem; margin: 0.4rem 0; }
 .v-wf-acthead { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
-.v-wf-num { color: var(--accent, #00ff9c); font-size: 0.85rem; }
+.v-wf-num { color: var(--accent, #e08a3c); font-size: 0.85rem; }
 .v-wf-actctrls { display: flex; gap: 0.3rem; }
 .v-wf-actbody { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.4rem; }
 .v-wf-type {
-  font: inherit; color: var(--accent, #00ff9c); background: #04140c;
+  font: inherit; color: var(--accent, #e08a3c); background: #04140c;
   border: 1px solid #1f3a2a; border-radius: 6px; padding: 0.35rem 0.4rem;
 }
 .v-wf-params { display: inline-flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
@@ -227,7 +227,7 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 }
 .v-faq summary {
   cursor: pointer; padding: 0.55rem 0.8rem;
-  color: var(--accent, #00ff9c); list-style: none;
+  color: var(--accent, #e08a3c); list-style: none;
 }
 .v-faq summary::-webkit-details-marker { display: none; }
 .v-faq summary::before { content: "\25b8\00a0"; }          /* ▸ */
