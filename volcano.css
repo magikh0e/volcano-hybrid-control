@@ -28,6 +28,13 @@ strong.term { color: var(--accent); }
 .sub { opacity: 0.72; }
 hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 
+/* keyboard focus — a visible amber ring. :focus-visible fires only for keyboard
+   (and other non-pointer) focus, so mouse/touch users see no change. The
+   terminal input keeps its borderless look; its container lights up instead. */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.v-term-in:focus-visible { outline: none; }
+.v-term:focus-within { border-color: var(--accent); }
+
 .v-panel { max-width: 34rem; margin: 1rem 0; }
 
 .v-readout {

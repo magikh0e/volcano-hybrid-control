@@ -1,6 +1,7 @@
 {
   "name": "Volcano Hybrid — Web Bluetooth Control",
   "short_name": "Volcano",
+  "id": "/",
   "description": "Control a Storz & Bickel Volcano Hybrid over Web Bluetooth — temperature, heat, fan, presets, bag fill, and device settings. No app, no backend.",
   "start_url": "./",
   "scope": "./",
@@ -13,5 +14,11 @@
     { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "WebUIExample.png",    "sizes": "849x726", "type": "image/png", "label": "Control tab — connect, temperature readout, presets, heat/fan/bag" },
+    { "src": "settingstab.png",     "sizes": "775x550", "type": "image/png", "label": "Settings tab — auto-off, LED brightness, units, cooling display, vibration" },
+    { "src": "WorkFlowExample.png", "sizes": "782x518", "type": "image/png", "label": "Workflows tab — the conditional temperature-ladder editor" },
+    { "src": "ConsoleExample.png",  "sizes": "796x623", "type": "image/png", "label": "Console tab — a terminal REPL for the Volcano scripting language" }
   ]
 }

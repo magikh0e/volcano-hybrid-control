@@ -56,15 +56,15 @@ desktop Chrome / Edge / Opera or Android Chrome.</p>
   <div id="v-status" aria-live="polite">Ready.</div>
 
   <nav class="v-tabs" role="tablist" aria-label="Sections">
-    <button class="v-tab" type="button" data-tab="control" role="tab" aria-selected="true">Control</button>
-    <button class="v-tab" type="button" data-tab="settings" role="tab" aria-selected="false">Settings</button>
-    <button class="v-tab" type="button" data-tab="workflows" role="tab" aria-selected="false">Workflows</button>
-    <button class="v-tab" type="button" data-tab="console" role="tab" aria-selected="false">Console</button>
+    <button class="v-tab" type="button" data-tab="control" role="tab" id="tab-control" aria-controls="panel-control" aria-selected="true">Control</button>
+    <button class="v-tab" type="button" data-tab="settings" role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false">Settings</button>
+    <button class="v-tab" type="button" data-tab="workflows" role="tab" id="tab-workflows" aria-controls="panel-workflows" aria-selected="false">Workflows</button>
+    <button class="v-tab" type="button" data-tab="console" role="tab" id="tab-console" aria-controls="panel-console" aria-selected="false">Console</button>
     <a class="v-tab v-tab-link" href="help.html" target="_blank" rel="noopener">Help &#8599;</a>
   </nav>
 
   <!-- ===== Control ===== -->
-  <section class="v-tabpanel" data-tab="control" role="tabpanel">
+  <section class="v-tabpanel" data-tab="control" role="tabpanel" id="panel-control" aria-labelledby="tab-control">
     <div class="v-readout">
       <div class="v-cell">
         <div class="v-label">Current</div>
@@ -128,7 +128,7 @@ desktop Chrome / Edge / Opera or Android Chrome.</p>
   </section>
 
   <!-- ===== Settings ===== -->
-  <section class="v-tabpanel" data-tab="settings" role="tabpanel" hidden>
+  <section class="v-tabpanel" data-tab="settings" role="tabpanel" id="panel-settings" aria-labelledby="tab-settings" hidden>
     <h2 class="v-subhead">Device</h2>
     <pre id="v-device">Connect to read serial number, firmware versions, and hours of operation.</pre>
 
@@ -166,13 +166,13 @@ desktop Chrome / Edge / Opera or Android Chrome.</p>
   </section>
 
   <!-- ===== Workflows ===== -->
-  <section class="v-tabpanel" data-tab="workflows" role="tabpanel" hidden>
+  <section class="v-tabpanel" data-tab="workflows" role="tabpanel" id="panel-workflows" aria-labelledby="tab-workflows" hidden>
     <p class="v-hint">Script your own heat / fan / wait sequences &mdash; saved in this browser, run over the live connection. The action model is inspired by <a href="https://github.com/ImACoderImACoderImACoder/onyx" target="_blank" rel="noopener">Project Onyx</a>; see <a href="help.html" target="_blank" rel="noopener">Help</a> for how each action works.</p>
     <div id="v-workflows"></div>
   </section>
 
   <!-- ===== Console ===== -->
-  <section class="v-tabpanel" data-tab="console" role="tabpanel" hidden>
+  <section class="v-tabpanel" data-tab="console" role="tabpanel" id="panel-console" aria-labelledby="tab-console" hidden>
     <p class="v-hint">A command line for the Volcano. Type <code>help</code>. Chain commands with <code>;</code> to run a sequence, or <code>run &lt;name&gt;</code> a saved workflow.</p>
     <div class="v-term" id="v-term">
       <div class="v-term-out" id="v-term-out"></div>

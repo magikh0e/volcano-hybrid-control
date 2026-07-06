@@ -126,4 +126,8 @@ reimplemented here in vanilla JS.
 Not affiliated with, endorsed by, or supported by Storz &amp; Bickel. Use at your
 own risk.
 
+## License
+
+[GPL-3.0-or-later](LICENSE) © 2026 magikh0e.
+
 — by [magikh0e](https://magikh0e.pl)
