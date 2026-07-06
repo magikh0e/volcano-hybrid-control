@@ -64,6 +64,10 @@
     <p>A small editor for scripting your own sequences. Action types: <strong>Heat On</strong> (optionally set a target), <strong>Heat Off</strong>, <strong>Fan On</strong> for N seconds (or "background", which doesn't block the next step), <strong>Wait</strong>, <strong>Set LED</strong>, <strong>Conditional Temp Set</strong> (read the current target, match a rung, bump to the next &mdash; a temperature ladder as data), <strong>Exit When Temp Reached</strong>, and <strong>Loop From Beginning</strong>. Save as many as you like and run them over the live connection. The action model is inspired by <a href="https://github.com/ImACoderImACoderImACoder/onyx" rel="noopener">Project Onyx</a>.</p>
   </details>
   <details>
+    <summary>Can I share a workflow with someone?</summary>
+    <p>Yes &mdash; on the Workflows tab, click <strong>&#128279;</strong> on a workflow to copy a <strong>share link</strong>. Whoever opens it is asked to import the workflow. It's encoded in the URL's <code>#</code> fragment, so nothing is uploaded &mdash; the whole workflow travels inside the link. You can also paste a share link (or exported JSON) into the <strong>Import</strong> button.</p>
+  </details>
+  <details>
     <summary>It disconnected on its own &mdash; now what?</summary>
     <p>Click <strong>Reconnect</strong> (it appears after a drop) to reconnect to the same unit without picking it again. If that fails, use Connect.</p>
   </details>

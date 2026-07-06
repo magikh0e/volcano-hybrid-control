@@ -834,6 +834,7 @@
         ? el("button", { class: "v-btn v-wf-stop", type: "button", onClick: () => { wfStop = true; } }, "■ Stop")
         : el("button", { class: "v-btn", type: "button", disabled: !connected || wfRunning,
             title: connected ? "" : "Connect to run", onClick: () => runWorkflow(wf) }, "▶ Run"),
+      el("button", { class: "v-mini", type: "button", disabled: wfRunning, title: "Copy share link", onClick: () => wfShare(wf) }, "🔗"),
       el("button", { class: "v-mini", type: "button", disabled: wfRunning, title: "Export JSON", onClick: () => wfExport(wf) }, "⤓"),
       el("button", { class: "v-mini v-wf-del", type: "button", disabled: wfRunning, title: "Delete workflow",
         onClick: () => { if (confirm('Delete workflow "' + (wf.name || "") + '"?')) { workflows = workflows.filter((w) => w !== wf); saveWorkflows(); renderWorkflows(); } } }, "🗑")));
@@ -925,18 +926,95 @@
       navigator.clipboard.writeText(json).then(() => status("Workflow JSON copied to clipboard.", "ok"), () => prompt("Workflow JSON:", json));
     else prompt("Workflow JSON:", json);
   }
-  function wfImport() {
-    const txt = prompt("Paste workflow JSON:");
-    if (!txt) return;
+  // ---- sharing (URL fragment) ----
+
+  // Base64url, UTF-8 safe.
+  function b64urlEncode(str) {
+    const bytes = new TextEncoder().encode(str);
+    let bin = ""; for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function b64urlDecode(s) {
+    s = String(s).replace(/-/g, "+").replace(/_/g, "/");
+    while (s.length % 4) s += "=";
+    const bin = atob(s), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  // Keep only known action types with clamped values — shared links are untrusted.
+  function sanitizeActions(arr) {
+    const known = { heatOn: 1, heatOff: 1, fanOn: 1, fanOnGlobal: 1, wait: 1, setLED: 1, exitWhenTemp: 1, conditionalTemp: 1, loop: 1 };
+    return (Array.isArray(arr) ? arr : []).filter((a) => a && known[a.type]).map((a) => {
+      switch (a.type) {
+        case "heatOn": return { type: "heatOn", temp: (a.temp === "" || a.temp == null) ? "" : clampT(a.temp) };
+        case "fanOn": case "fanOnGlobal": case "wait": return { type: a.type, secs: clampSecs(a.secs) };
+        case "setLED": return { type: "setLED", pct: clampPct(a.pct) };
+        case "exitWhenTemp": return { type: "exitWhenTemp", temp: clampT(a.temp) };
+        case "conditionalTemp": return {
+          type: "conditionalTemp",
+          def: { temp: clampT(a.def && a.def.temp), wait: clampSecs(a.def && a.def.wait) },
+          conditions: (Array.isArray(a.conditions) ? a.conditions : []).map((c) => ({
+            ifTemp: clampT(c && c.ifTemp), thenSet: clampT(c && c.thenSet), wait: clampSecs(c && c.wait),
+          })),
+        };
+        default: return { type: a.type };   // heatOff, loop
+      }
+    });
+  }
+
+  function wfShare(wf) {
     try {
-      const obj = JSON.parse(txt);
+      const payload = { name: wf.name, actions: wf.actions };
+      const url = location.origin + location.pathname + "#wf=" + b64urlEncode(JSON.stringify(payload));
+      if (navigator.clipboard && navigator.clipboard.writeText)
+        navigator.clipboard.writeText(url).then(
+          () => status("Share link copied to clipboard.", "ok"),
+          () => prompt("Share link:", url));
+      else prompt("Share link:", url);
+    } catch (e) { status("Share failed: " + (e.message || e), "err"); }
+  }
+
+  function wfImport() {
+    const txt = prompt("Paste a workflow's JSON or a share link:");
+    if (!txt) return;
+    let raw = txt.trim();
+    const m = /[#&?]wf=([^&\s]+)/.exec(raw);              // a share link?
+    if (m) { try { raw = b64urlDecode(m[1]); } catch (e) { status("Invalid share link.", "err"); return; } }
+    try {
+      const obj = JSON.parse(raw);
       const arr = Array.isArray(obj) ? obj : [obj];
       let n = 0;
-      arr.forEach((w) => { if (w && Array.isArray(w.actions)) { w.id = wfNewId(); if (!w.name) w.name = "Imported workflow"; workflows.push(w); n++; } });
-      if (!n) { status("No valid workflow found in that JSON.", "warn"); return; }
+      arr.forEach((w) => {
+        if (w && Array.isArray(w.actions)) {
+          workflows.push({ id: wfNewId(), name: w.name || "Imported workflow", actions: sanitizeActions(w.actions) });
+          n++;
+        }
+      });
+      if (!n) { status("No valid workflow found.", "warn"); return; }
       saveWorkflows(); renderWorkflows();
       status("Imported " + n + " workflow(s).", "ok");
-    } catch (e) { status("Import failed: invalid JSON.", "err"); }
+    } catch (e) { status("Import failed: invalid JSON / link.", "err"); }
+  }
+
+  // If the page was opened with a #wf=… share link, offer to import it.
+  function importSharedWorkflow() {
+    const m = /[#&]wf=([^&]+)/.exec(location.hash || "");
+    if (!m) return;
+    try { history.replaceState(null, "", location.pathname + location.search); }
+    catch (e) { try { location.hash = ""; } catch (e2) {} }
+    let wf;
+    try {
+      const obj = JSON.parse(b64urlDecode(m[1]));
+      if (!obj || !Array.isArray(obj.actions)) throw new Error("no actions");
+      wf = { id: wfNewId(), name: obj.name || "Shared workflow", actions: sanitizeActions(obj.actions) };
+    } catch (e) { status("Couldn't read the shared workflow link.", "err"); return; }
+    if (!wf.actions.length) { status("Shared link had no valid actions.", "warn"); return; }
+    if (!confirm('Import shared workflow "' + wf.name + '" (' + wf.actions.length + ' actions)?')) return;
+    workflows.push(wf); saveWorkflows(); renderWorkflows();
+    status('Imported shared workflow "' + wf.name + '".', "ok");
+    const wtab = document.querySelector('.v-tab[data-tab="workflows"]');
+    if (wtab) wtab.click();
   }
 
   function init() {
@@ -994,6 +1072,7 @@
       }
     } catch (e) { /* localStorage may be unavailable */ }
     status("Ready. Click Connect and pick your Volcano.");
+    setTimeout(importSharedWorkflow, 0);   // offer to import a #wf=… share link, if present
   }
 
   // Command API for the standalone terminal (console.js). Only exposed when a
