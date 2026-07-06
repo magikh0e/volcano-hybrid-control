@@ -262,4 +262,31 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
   opacity: 0.85; margin: 1.1rem 0 0.4rem;
 }
 
+/* ---- console / terminal ---- */
+.v-term {
+  border: 1px solid var(--edge); border-radius: 8px;
+  background: #050505; padding: 0.6rem 0.7rem; font-size: 0.9rem;
+}
+.v-term-out {
+  max-height: 22rem; min-height: 6rem; overflow-y: auto;
+  white-space: pre-wrap; word-break: break-word; margin-bottom: 0.4rem;
+}
+.v-term-line { line-height: 1.45; }
+.v-term-cmd { color: var(--text); }
+.v-term-prompt { color: var(--accent, #e08a3c); font-weight: 600; }
+.v-term-ok   { color: #8fd06a; }   /* terminal-green success */
+.v-term-err  { color: #ff9a9a; }
+.v-term-warn { color: #e0a800; }
+.v-term-dim  { opacity: 0.6; }
+.v-term-sys  { color: var(--accent, #e08a3c); opacity: 0.75; }
+.v-term-form {
+  display: flex; align-items: baseline; gap: 0.4rem;
+  border-top: 1px solid var(--edge); padding-top: 0.4rem;
+}
+.v-term-in {
+  flex: 1; font: inherit; color: var(--accent, #e08a3c);
+  background: transparent; border: 0; outline: none;
+  caret-color: var(--accent, #e08a3c);
+}
+
 /* Hide the live controls until connected is not required — JS toggles state. */

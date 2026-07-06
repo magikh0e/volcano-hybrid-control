@@ -46,6 +46,7 @@ desktop Chrome / Edge / Opera or Android Chrome.</p>
     <button class="v-tab" type="button" data-tab="control" role="tab" aria-selected="true">Control</button>
     <button class="v-tab" type="button" data-tab="settings" role="tab" aria-selected="false">Settings</button>
     <button class="v-tab" type="button" data-tab="workflows" role="tab" aria-selected="false">Workflows</button>
+    <button class="v-tab" type="button" data-tab="console" role="tab" aria-selected="false">Console</button>
     <a class="v-tab v-tab-link" href="help.html" target="_blank" rel="noopener">Help &#8599;</a>
   </nav>
 
@@ -157,6 +158,18 @@ desktop Chrome / Edge / Opera or Android Chrome.</p>
     <div id="v-workflows"></div>
   </section>
 
+  <!-- ===== Console ===== -->
+  <section class="v-tabpanel" data-tab="console" role="tabpanel" hidden>
+    <p class="v-hint">A command line for the Volcano. Type <code>help</code>. Chain commands with <code>;</code> to run a sequence, or <code>run &lt;name&gt;</code> a saved workflow.</p>
+    <div class="v-term" id="v-term">
+      <div class="v-term-out" id="v-term-out"></div>
+      <form class="v-term-form" id="v-term-form" autocomplete="off">
+        <span class="v-term-prompt">volcano&nbsp;$</span>
+        <input class="v-term-in" id="v-term-in" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="command input">
+      </form>
+    </div>
+  </section>
+
 </div>
 
 <hr>
@@ -170,6 +183,7 @@ desktop Chrome / Edge / Opera or Android Chrome.</p>
 </footer>
 
 <script src="volcano-ble.js" defer></script>
+<script src="console.js" defer></script>
 <script src="pwa.js" defer></script>
 <script src="tabs.js" defer></script>
 </body>

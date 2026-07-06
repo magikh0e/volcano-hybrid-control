@@ -77,6 +77,30 @@
   </details>
 </div>
 
+<h2>Console</h2>
+<p class="sub">The <strong>Console</strong> tab is a command line for the Volcano. Type <code>help</code> for the list; chain commands with <code>;</code> to run them in sequence, or <code>run &lt;name&gt;</code> to run a workflow built on the Workflows tab.</p>
+<pre>  help                  list commands
+  status                connection + temperature state
+  connect / disconnect  open or close the BLE link
+  temp &lt;40-230&gt;         set target temperature (&deg;C)
+  heat on | off         heater on / off
+  fan on | off | &lt;s&gt;    pump on/off, or run it for &lt;s&gt; seconds
+  bag                   fill a bag (41&nbsp;s)
+  led &lt;0-100&gt;           LED brightness
+  units c | f           device display units
+  ladder                run the Vapesuvius ladder
+  wait &lt;s&gt;              pause &lt;s&gt; seconds (for scripts)
+  ls                    list saved workflows
+  run &lt;name&gt;            run a saved workflow
+  stop                  cancel a running script
+  clear                 wipe the screen
+
+Scripts chain with ';' and run in order &mdash; a workflow from the command line:
+
+  heat on; wait 300; temp 220; wait 120; bag
+
+Up / down arrows recall history, and everything the app does is logged here.</pre>
+
 <h2>Protocol notes</h2>
 <pre>The GATT it uses, all under service <code>10110000-5354-4f52-5a26-4249434b454c</code>
 (the tail spells <code>STORZ&amp;BICKEL</code> in ASCII):

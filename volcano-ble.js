@@ -64,6 +64,9 @@
   const $ = (id) => document.getElementById(id);
 
   function status(msg, kind) {
+    // Mirror every status message to the terminal, if one is listening
+    // (console.js sets window.volcanoEcho). No-op on the site build.
+    if (window.volcanoEcho) { try { window.volcanoEcho(msg, kind); } catch (e) {} }
     const el = $("v-status");
     if (!el) return;
     el.textContent = msg;
@@ -991,6 +994,33 @@
       }
     } catch (e) { /* localStorage may be unavailable */ }
     status("Ready. Click Connect and pick your Volcano.");
+  }
+
+  // Command API for the standalone terminal (console.js). Only exposed when a
+  // console input is present in the page, so the site build (no terminal) never
+  // sees it. Methods read live closure state at call time.
+  if (typeof document !== "undefined" && document.getElementById("v-term-in")) {
+    window.VolcanoConsole = {
+      connected: function () { return !!svc; },
+      connect: connect,
+      disconnect: disconnect,
+      setTarget: setTargetTemp,                 // async(°C)
+      getTarget: function () { return target; },
+      readCurrent: readCurrentTemp,             // async -> °C or null
+      heat: function (on) { return write(on ? HEAT_ON : HEAT_OFF, [on ? 1 : 0]); },
+      fan: function (on) { return write(on ? FAN_ON : FAN_OFF, [on ? 1 : 0]); },
+      led: function (pct) { return writeU16(LED_BRIGHT, clampPct(pct)); },
+      bag: fillBag,
+      ladder: runLadder,
+      units: function (celsius) { return setUnits(celsius); },
+      listWorkflows: function () { return workflows.slice(); },
+      runWorkflow: function (wf) { return runWorkflow(wf); },
+      state: function () {
+        return { connected: !!svc, heat: heatOn, fan: fanOn, target: target,
+                 name: device && device.name };
+      },
+      MIN_T: MIN_T, MAX_T: MAX_T,
+    };
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
