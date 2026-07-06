@@ -61,7 +61,9 @@ so disconnect Home Assistant or the S&amp;B app first (or vice-versa).
   add or remove your own, saved in `localStorage` (defaults to the Vapesuvius
   rungs, 179–230 °C).
 - **Run ladder** — turns heat on and walks 179 → 230 °C, one rung every 5 min
-  (~35 min) with a live countdown.
+  (~35 min) with a live countdown. Tick **fill a bag at each rung** to make it a
+  hands-off Vapesuvius bag session — it waits for each rung to reach temp, then
+  fills a bag (41 s) automatically before moving on.
 - **Fill bag** — runs the pump 41 s (standard S&amp;B Easy Valve) with a countdown
   and auto-stop.
 - **Workflows** — a built-in editor to script your own heat / fan / wait

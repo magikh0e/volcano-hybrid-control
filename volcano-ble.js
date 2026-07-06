@@ -49,12 +49,15 @@
   const FILL_SECS = 41;     // standard S&B Easy Valve bag fill (matches the HA script)
   const LADDER = [179, 185, 191, 199, 205, 211, 217, 230]; // Vapesuvius rungs (°C)
   const LADDER_STEP_SECS = 300;   // 5 min per rung, per the HA auto-progress automation
+  const LADDER_FILL_TOL = 2;      // auto-fill: fill a rung's bag once current temp is within 2 °C of it
   const DEFAULT_PRESETS = [179, 185, 191, 199, 205, 211, 217, 230]; // editable quick-set presets (°C)
 
   let device = null, server = null, svc = null, svc3 = null;
   let curTempChar = null, setTempChar = null, prj1Char = null, prj2Char = null;
   let pollTimer = null, fillTimer = null, fillLeft = 0;
   let ladderTimer = null, ladderElapsed = 0, ladderIdx = -1;
+  let ladderRungFilled = false, ladderFilling = false, ladderFillLeft = 0;
+  let curTemp = null;             // last-seen current temp (°C); gates the ladder auto-fill
   let target = 190;         // pending target shown in the UI
   let heatOn = false, fanOn = false;
   let shutOffMin = null;    // last-known auto-off setting (min), used by the session timer
@@ -164,7 +167,8 @@
       updateErrors(reg, p2);
       if (curTempChar) {
         const dv = await curTempChar.readValue();
-        const c = $("v-cur"); if (c) c.textContent = Math.round(parseTemp(dv)) + " °C";
+        curTemp = Math.round(parseTemp(dv));
+        const c = $("v-cur"); if (c) c.textContent = curTemp + " °C";
       }
       await updateTimers();
     } catch (e) { /* transient read errors are fine between polls */ }
@@ -393,8 +397,9 @@
     try {
       await curTempChar.startNotifications();
       curTempChar.addEventListener("characteristicvaluechanged", (ev) => {
+        curTemp = Math.round(parseTemp(ev.target.value));
         const c = $("v-cur");
-        if (c) c.textContent = Math.round(parseTemp(ev.target.value)) + " °C";
+        if (c) c.textContent = curTemp + " °C";
       });
     } catch (e) { /* fall back to polling below */ }
 
@@ -596,40 +601,83 @@
 
   function stopLadder(msg, kind) {
     if (ladderTimer) { clearInterval(ladderTimer); ladderTimer = null; }
-    ladderIdx = -1;
+    if (ladderFilling) {                 // a bag was mid-fill — stop the pump
+      write(FAN_OFF, [0]).catch(() => {});
+      fanOn = false; setLed("v-fanled", false);
+    }
+    ladderIdx = -1; ladderFilling = false; ladderRungFilled = false;
     resetLadderButton();
     if (msg) status(msg, kind);
   }
 
   async function tickLadder() {
     const idx = Math.min(LADDER.length - 1, Math.floor(ladderElapsed / LADDER_STEP_SECS));
-    if (idx !== ladderIdx) {
+    const last = idx >= LADDER.length - 1;
+    const fillOn = !!($("v-ladder-fill") && $("v-ladder-fill").checked);
+    const rungLabel = "Ladder rung " + (idx + 1) + "/" + LADDER.length;
+    const b = $("v-ladder");
+    let msg = null;
+
+    if (idx !== ladderIdx) {              // entered a new rung — set its target
       ladderIdx = idx;
       target = LADDER[idx]; showTarget();
       try { await commitTarget(); } catch (e) { /* keep walking */ }
+      ladderRungFilled = false;          // this rung's bag hasn't been filled yet
     }
-    const b = $("v-ladder");
-    if (idx >= LADDER.length - 1) {
+
+    if (ladderFilling) {                  // pump running — count the bag down
+      ladderFillLeft -= 1;
+      if (ladderFillLeft <= 0) {
+        try {
+          await write(FAN_OFF, [0]);
+          fanOn = false; setLed("v-fanled", false);
+          ladderFilling = false;
+        } catch (e) {                     // stop failed (GATT busy) — retry next tick
+          ladderFillLeft = 1; msg = rungLabel + " — stopping pump…";
+        }
+      }
+      if (ladderFilling) msg = msg || (rungLabel + " — filling bag… " + ladderFillLeft + "s");
+    } else if (fillOn && !ladderRungFilled) {   // wait until it reaches temp, then fill once
+      if (curTemp != null && curTemp >= LADDER[idx] - LADDER_FILL_TOL) {
+        try {
+          await write(FAN_ON, [1]);
+          fanOn = true; setLed("v-fanled", true);
+          ladderRungFilled = true; ladderFilling = true; ladderFillLeft = FILL_SECS;
+          msg = rungLabel + " — filling bag… " + ladderFillLeft + "s";
+        } catch (e) { msg = rungLabel + " — reached temp, starting fill…"; }   // retry next tick
+      } else {
+        msg = rungLabel + " — heating to " + LADDER[idx] + " °C…";
+      }
+    }
+
+    // complete only once the final rung's bag (if any) has finished
+    if (last && !ladderFilling && (!fillOn || ladderRungFilled)) {
       if (ladderTimer) { clearInterval(ladderTimer); ladderTimer = null; }
       resetLadderButton();
       status("Ladder complete — holding at " + LADDER[idx] + " °C.", "ok");
       return;
     }
-    const rem = LADDER_STEP_SECS - (ladderElapsed % LADDER_STEP_SECS);
-    const mm = Math.floor(rem / 60), ss = String(rem % 60).padStart(2, "0");
+
     if (b) b.textContent = "■ Stop ladder (" + (idx + 1) + "/" + LADDER.length + ")";
-    status("Ladder rung " + (idx + 1) + "/" + LADDER.length + " — " + LADDER[idx] +
-           " °C · next in " + mm + ":" + ss, "ok");
+    if (msg == null) {                    // default: countdown to the next rung
+      const rem = LADDER_STEP_SECS - (ladderElapsed % LADDER_STEP_SECS);
+      const mm = Math.floor(rem / 60), ss = String(rem % 60).padStart(2, "0");
+      msg = rungLabel + " — " + LADDER[idx] + " °C · next in " + mm + ":" + ss;
+    }
+    status(msg, "ok");
     ladderElapsed += 1;
   }
 
   async function runLadder() {
     if (ladderTimer) { stopLadder("Ladder stopped.", "warn"); return; }
+    const fillOn = !!($("v-ladder-fill") && $("v-ladder-fill").checked);
     if (!confirm("Start the Vapesuvius ladder? Heat turns on and the target walks " +
-                 LADDER[0] + "→" + LADDER[LADDER.length - 1] + " °C, one rung every 5 min (~35 min).")) return;
+                 LADDER[0] + "→" + LADDER[LADDER.length - 1] + " °C, one rung every 5 min (~35 min)." +
+                 (fillOn ? " A bag is filled automatically once each rung reaches temp." : ""))) return;
     try {
       await write(HEAT_ON, [1]); heatOn = true; setLed("v-heatled", true);
       ladderElapsed = 0; ladderIdx = -1;
+      ladderFilling = false; ladderRungFilled = false;
       await tickLadder();          // apply the first rung immediately
       ladderTimer = setInterval(tickLadder, 1000);
     } catch (e) { status("Ladder failed: " + (e.message || e), "err"); }
@@ -1068,6 +1116,13 @@
         ah.checked = localStorage.getItem("volcano-autoheat") === "1";
         ah.addEventListener("change", () => {
           try { localStorage.setItem("volcano-autoheat", ah.checked ? "1" : "0"); } catch (e) {}
+        });
+      }
+      const lf = $("v-ladder-fill");
+      if (lf) {
+        lf.checked = localStorage.getItem("volcano-ladder-fill") === "1";
+        lf.addEventListener("change", () => {
+          try { localStorage.setItem("volcano-ladder-fill", lf.checked ? "1" : "0"); } catch (e) {}
         });
       }
     } catch (e) { /* localStorage may be unavailable */ }
