@@ -220,4 +220,19 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-wf-del:hover:not(:disabled) { background: #2a1414; border-color: #ff6b6b; }
 .v-wf-add, .v-wf-addcond { width: 100%; }
 
+/* ---- help / FAQ ---- */
+.v-faq details {
+  border: 1px solid #1f3a2a; border-radius: 6px;
+  margin: 0.4rem 0; background: #0a140d;
+}
+.v-faq summary {
+  cursor: pointer; padding: 0.55rem 0.8rem;
+  color: var(--accent, #00ff9c); list-style: none;
+}
+.v-faq summary::-webkit-details-marker { display: none; }
+.v-faq summary::before { content: "\25b8\00a0"; }          /* ▸ */
+.v-faq details[open] summary::before { content: "\25be\00a0"; } /* ▾ */
+.v-faq summary:hover { background: #10251a; }
+.v-faq p { margin: 0 0 0.6rem; padding: 0 0.9rem; opacity: 0.9; }
+
 /* Hide the live controls until connected is not required — JS toggles state. */

@@ -159,6 +159,54 @@ desktop Chrome / Edge / Opera or Android Chrome.</p>
 <p class="v-hint">Script your own heat / fan / wait sequences (like Project Onyx) &mdash; saved in this browser, run over the live connection.</p>
 <div id="v-workflows"></div>
 
+<h2 id="faq">[ Help / FAQ ]</h2>
+<div class="v-faq">
+  <details>
+    <summary>It won't connect, or no device shows up</summary>
+    <p>The Volcano allows only one Bluetooth connection at a time. If Home Assistant or the Storz &amp; Bickel app is connected, disconnect it first. Also check that Bluetooth is on, the unit is powered, and you're within a few metres.</p>
+  </details>
+  <details>
+    <summary>Which browsers and devices work?</summary>
+    <p>Desktop Chrome, Edge, or Opera, and Chrome on Android. iOS, Firefox, and Safari don't implement Web Bluetooth, so they can't connect. The page must be served over HTTPS (localhost also works).</p>
+  </details>
+  <details>
+    <summary>Does it work over the internet, or as remote control?</summary>
+    <p>No &mdash; it's local only. The browser talks straight to the device over Bluetooth, so you have to be in range. Nothing is sent to any server.</p>
+  </details>
+  <details>
+    <summary>Do I need an app or account? Where's my data?</summary>
+    <p>No app, no account, no backend. Your presets, workflows, and the "heat on connect" preference are stored in your browser and never leave your machine.</p>
+  </details>
+  <details>
+    <summary>Can I use this and Home Assistant at the same time?</summary>
+    <p>No &mdash; the Volcano accepts only one connection. Disconnect one to use the other.</p>
+  </details>
+  <details>
+    <summary>I set &deg;F but the panel still shows &deg;C</summary>
+    <p>The &deg;C/&deg;F switch changes the Volcano's own screen. This panel always shows &deg;C, because the device reports temperature in &deg;C over Bluetooth regardless of its display setting.</p>
+  </details>
+  <details>
+    <summary>What does "Run ladder" do?</summary>
+    <p>It turns the heater on and steps the target 179&rarr;230&nbsp;&deg;C, one rung every 5&nbsp;minutes (~35&nbsp;min) &mdash; the "Vapesuvius" full-spectrum session, with a live countdown. Press it again to stop.</p>
+  </details>
+  <details>
+    <summary>What are Workflows?</summary>
+    <p>A small editor for scripting your own heat / fan / wait sequences &mdash; target temperatures, pauses, conditional temperature ladders, and loops. Save as many as you like and run them over the live connection.</p>
+  </details>
+  <details>
+    <summary>It disconnected on its own &mdash; now what?</summary>
+    <p>Click <strong>Reconnect</strong> (it appears after a drop) to reconnect to the same unit without picking it again. If that fails, use Connect.</p>
+  </details>
+  <details>
+    <summary>Can I install it as an app?</summary>
+    <p>Yes &mdash; it's a PWA. Your browser will offer to install it (or use the Install button), and it works offline after the first load. The Bluetooth link still needs the device in range.</p>
+  </details>
+  <details>
+    <summary>Is it safe?</summary>
+    <p>It's a 230&nbsp;&deg;C heater. The page clamps the range to 40&ndash;230&nbsp;&deg;C and asks before turning heat on, and the device's own auto-off timer still applies &mdash; but don't walk away from a running unit.</p>
+  </details>
+</div>
+
 <h2 id="notes">[ Notes ]</h2>
 
 <pre>The GATT it uses, all under service <code>10110000-5354-4f52-5a26-4249434b454c</code>
