@@ -235,4 +235,31 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-faq summary:hover { background: #10251a; }
 .v-faq p { margin: 0 0 0.6rem; padding: 0 0.9rem; opacity: 0.9; }
 
+/* ---- tabs ---- */
+.v-appbar { margin-bottom: 0.5rem; }
+.v-tabs {
+  display: flex; gap: 0.25rem; flex-wrap: wrap; align-items: flex-end;
+  border-bottom: 1px solid var(--edge); margin: 1rem 0 0.9rem;
+}
+.v-tab {
+  font: inherit; cursor: pointer;
+  color: var(--text); background: transparent;
+  border: 1px solid transparent; border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  padding: 0.5rem 0.9rem; opacity: 0.65;
+  text-decoration: none;
+}
+.v-tab:hover { opacity: 1; }
+.v-tab.active {
+  color: var(--accent); opacity: 1;
+  border-color: var(--edge); background: var(--panel);
+  margin-bottom: -1px;                 /* sit on top of the row's border */
+}
+.v-tab-link { margin-left: auto; }     /* push Help to the right */
+.v-tabpanel { margin: 0.4rem 0; }
+.v-subhead {
+  font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+  opacity: 0.85; margin: 1.1rem 0 0.4rem;
+}
+
 /* Hide the live controls until connected is not required — JS toggles state. */

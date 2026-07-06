@@ -5,10 +5,10 @@
 <title>Volcano Hybrid &mdash; Web Bluetooth Control</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta name="description" content="Control a Storz & Bickel Volcano Hybrid from your browser over Web Bluetooth — temperature, heat, fan, presets, bag fill, ladder, and device settings. No app, no backend. Chromium / Android.">
+<meta name="description" content="Control a Storz & Bickel Volcano Hybrid from your browser over Web Bluetooth — temperature, heat, fan, presets, bag fill, ladder, workflows, and device settings. No app, no backend. Chromium / Android.">
 <link rel="stylesheet" href="volcano.css">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#04140c">
+<meta name="theme-color" content="#0a0a0a">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -21,226 +21,156 @@
 <h1>Volcano Hybrid &mdash; Web Bluetooth Control</h1>
 
 <p class="sub">Drive a <a href="https://www.storz-bickel.com/" rel="noopener">Storz &amp; Bickel Volcano Hybrid</a>
-straight from the browser over <strong class="term">Web Bluetooth</strong> &mdash; the browser is the
-BLE central, talking to the device's GATT directly. No app, no backend, no Home Assistant,
-nothing leaves your machine. Set temperature, toggle heat, toggle the pump.</p>
+straight from the browser over <strong class="term">Web Bluetooth</strong> &mdash; no app, no backend,
+nothing leaves your machine. New here? <a href="help.html" target="_blank" rel="noopener">Help &amp; requirements &#8599;</a></p>
 
 <p><button id="v-install" class="v-btn" type="button" hidden>&#10515; Install app</button></p>
-
-<pre><strong class="term">Before you click Connect:</strong>
-  &mdash; <strong>Chromium only.</strong> Desktop Chrome / Edge / Opera, or Android Chrome.
-    No iOS, no Firefox, no Safari &mdash; they don't implement Web Bluetooth.
-  &mdash; <strong>Secure context.</strong> Serve over HTTPS, or run it from http://localhost.
-  &mdash; <strong>Local, not remote.</strong> Works only within Bluetooth range of the
-    Volcano. This is not remote control.
-  &mdash; <strong>One connection at a time.</strong> The Volcano allows a single BLE link.
-    If Home Assistant or the S&amp;B app is connected, this page can't be &mdash;
-    disconnect that first (or vice-versa).
-  &mdash; <strong>It's a 230&nbsp;&deg;C heater.</strong> The page clamps 40&ndash;230&nbsp;&deg;C and confirms
-    before turning heat on, but don't walk away from a running unit.</pre>
 
 <p id="v-unsupported" class="v-note" hidden>This browser doesn't support Web Bluetooth. Open this page in
 desktop Chrome / Edge / Opera or Android Chrome.</p>
 
-<div id="v-panel" class="v-panel">
+<div id="v-panel">
 
-  <div class="v-row">
+  <!-- persistent: connect + live status across all tabs -->
+  <div class="v-row v-appbar">
     <button id="v-connect" class="v-btn wide" type="button">&#128268; Connect Volcano</button>
     <button id="v-reconnect" class="v-btn" type="button" hidden>&#8635; Reconnect</button>
     <button id="v-disconnect" class="v-btn" type="button" hidden>Disconnect</button>
     <label class="v-check"><input type="checkbox" id="v-autoheat"> heat on connect</label>
   </div>
 
-  <div class="v-readout">
-    <div class="v-cell">
-      <div class="v-label">Current</div>
-      <div class="v-value" id="v-cur">---</div>
-    </div>
-    <div class="v-cell">
-      <div class="v-label">Target</div>
-      <div class="v-value" id="v-set">190 &deg;C</div>
-    </div>
-  </div>
-
-  <div class="v-row">
-    <span class="v-rowlabel">Session</span>
-    <span class="v-hint" id="v-session">&mdash;</span>
-  </div>
-
-  <div class="v-row">
-    <span class="v-rowlabel">Target</span>
-    <button id="v-tminus" class="v-step" type="button" disabled aria-label="Lower target">&minus;</button>
-    <button id="v-tplus" class="v-step" type="button" disabled aria-label="Raise target">+</button>
-    <button id="v-setbtn" class="v-btn" type="button" disabled>Set target</button>
-  </div>
-
-  <div class="v-row v-presets-row">
-    <span class="v-rowlabel">Presets</span>
-    <div class="v-presets" id="v-presets"><!-- rendered from saved presets by volcano-ble.js --></div>
-    <button id="v-preset-edit" class="v-mini" type="button" aria-pressed="false" title="Edit presets" aria-label="Edit presets">&#9998;</button>
-  </div>
-
-  <div class="v-preset-editor" id="v-preset-editor" hidden>
-    <p class="v-preset-help">Presets are your one-tap temperature shortcuts, saved in this browser. Tap a chip above to remove it, or add your own below.</p>
-    <div class="v-row">
-      <span class="v-rowlabel">Add</span>
-      <input id="v-preset-add-in" class="v-num" type="number" min="40" max="230" step="1" inputmode="numeric" aria-label="New preset temperature in Celsius" placeholder="195">
-      <span class="v-unit">&deg;C</span>
-      <button id="v-preset-add" class="v-btn" type="button">+ Add</button>
-      <button id="v-preset-reset" class="v-btn" type="button">Reset</button>
-    </div>
-    <p class="v-preset-help"><strong>Reset</strong> restores the defaults &mdash; the <em>Vapesuvius</em> ladder that steps 179&rarr;230&nbsp;&deg;C through a full-spectrum session.</p>
-  </div>
-
-  <div class="v-row">
-    <span class="v-rowlabel">Auto</span>
-    <button id="v-ladder" class="v-btn wide" type="button" disabled>&#9654; Run ladder</button>
-  </div>
-
-  <div class="v-row">
-    <span class="v-rowlabel">Heat <span id="v-heatled" class="v-led"></span></span>
-    <button id="v-heat" class="v-btn wide" type="button" disabled>&#9211; Heat ON</button>
-  </div>
-
-  <div class="v-row">
-    <span class="v-rowlabel">Fan <span id="v-fanled" class="v-led"></span></span>
-    <button id="v-fan" class="v-btn wide" type="button" disabled>&#11034; Fan ON</button>
-  </div>
-
-  <div class="v-row">
-    <span class="v-rowlabel">Bag</span>
-    <button id="v-fill" class="v-btn wide" type="button" disabled>&#9201; Fill bag (41s)</button>
-  </div>
-
   <p id="v-error" class="v-error" role="alert" hidden></p>
-
   <div id="v-status" aria-live="polite">Ready.</div>
 
-</div>
+  <nav class="v-tabs" role="tablist" aria-label="Sections">
+    <button class="v-tab" type="button" data-tab="control" role="tab" aria-selected="true">Control</button>
+    <button class="v-tab" type="button" data-tab="settings" role="tab" aria-selected="false">Settings</button>
+    <button class="v-tab" type="button" data-tab="workflows" role="tab" aria-selected="false">Workflows</button>
+    <a class="v-tab v-tab-link" href="help.html" target="_blank" rel="noopener">Help &#8599;</a>
+  </nav>
 
-<h2 id="device">[ Device ]</h2>
-
-<pre id="v-device">Connect to read serial number, firmware versions, and hours of operation.</pre>
-
-<h2 id="settings">[ Settings ]</h2>
-
-<div id="v-settings" class="v-panel">
-  <div class="v-row">
-    <span class="v-rowlabel">Auto-off</span>
-    <input id="v-shutoff-in" class="v-num" type="number" min="1" max="480" step="1" inputmode="numeric" aria-label="Auto-off minutes" disabled>
-    <span class="v-unit">min</span>
-    <button id="v-shutoff-set" class="v-btn" type="button" disabled>Set</button>
-    <span class="v-hint" id="v-shutoff-cur"></span>
-  </div>
-  <div class="v-row">
-    <span class="v-rowlabel">LED Brightness %</span>
-    <input id="v-led-in" class="v-num" type="number" min="0" max="100" step="1" inputmode="numeric" aria-label="LED brightness percent (0-100)" disabled>
-    <button id="v-led-set" class="v-btn" type="button" disabled>Set</button>
-    <span class="v-hint" id="v-led-cur"></span>
-  </div>
-  <div class="v-row">
-    <span class="v-rowlabel">Units</span>
-    <div class="v-seg" id="v-units" role="group" aria-label="Temperature units shown on the device">
-      <button class="v-segbtn" type="button" data-unit="C" aria-pressed="false" disabled>&deg;C</button>
-      <button class="v-segbtn" type="button" data-unit="F" aria-pressed="false" disabled>&deg;F</button>
+  <!-- ===== Control ===== -->
+  <section class="v-tabpanel" data-tab="control" role="tabpanel">
+    <div class="v-readout">
+      <div class="v-cell">
+        <div class="v-label">Current</div>
+        <div class="v-value" id="v-cur">---</div>
+      </div>
+      <div class="v-cell">
+        <div class="v-label">Target</div>
+        <div class="v-value" id="v-set">190 &deg;C</div>
+      </div>
     </div>
-    <span class="v-hint" id="v-units-cur"></span>
-  </div>
-  <div class="v-row">
-    <label class="v-check"><input type="checkbox" id="v-cooldisp" disabled> Show temperature while cooling</label>
-  </div>
-  <div class="v-row">
-    <label class="v-check"><input type="checkbox" id="v-vibrate" disabled> Vibration alert (buzz on target reached)</label>
-  </div>
-  <p class="v-hint">These change the Volcano's own screen and haptics &mdash; the panel above always reads &deg;C, since the device reports temperature in &deg;C over BLE regardless.</p>
+
+    <div class="v-row">
+      <span class="v-rowlabel">Session</span>
+      <span class="v-hint" id="v-session">&mdash;</span>
+    </div>
+
+    <div class="v-row">
+      <span class="v-rowlabel">Target</span>
+      <button id="v-tminus" class="v-step" type="button" disabled aria-label="Lower target">&minus;</button>
+      <button id="v-tplus" class="v-step" type="button" disabled aria-label="Raise target">+</button>
+      <button id="v-setbtn" class="v-btn" type="button" disabled>Set target</button>
+    </div>
+
+    <div class="v-row v-presets-row">
+      <span class="v-rowlabel">Presets</span>
+      <div class="v-presets" id="v-presets"><!-- rendered from saved presets by volcano-ble.js --></div>
+      <button id="v-preset-edit" class="v-mini" type="button" aria-pressed="false" title="Edit presets" aria-label="Edit presets">&#9998;</button>
+    </div>
+
+    <div class="v-preset-editor" id="v-preset-editor" hidden>
+      <p class="v-preset-help">Presets are your one-tap temperature shortcuts, saved in this browser. Tap a chip above to remove it, or add your own below.</p>
+      <div class="v-row">
+        <span class="v-rowlabel">Add</span>
+        <input id="v-preset-add-in" class="v-num" type="number" min="40" max="230" step="1" inputmode="numeric" aria-label="New preset temperature in Celsius" placeholder="195">
+        <span class="v-unit">&deg;C</span>
+        <button id="v-preset-add" class="v-btn" type="button">+ Add</button>
+        <button id="v-preset-reset" class="v-btn" type="button">Reset</button>
+      </div>
+      <p class="v-preset-help"><strong>Reset</strong> restores the defaults &mdash; the <em>Vapesuvius</em> ladder that steps 179&rarr;230&nbsp;&deg;C through a full-spectrum session.</p>
+    </div>
+
+    <div class="v-row">
+      <span class="v-rowlabel">Auto</span>
+      <button id="v-ladder" class="v-btn wide" type="button" disabled>&#9654; Run ladder</button>
+    </div>
+
+    <div class="v-row">
+      <span class="v-rowlabel">Heat <span id="v-heatled" class="v-led"></span></span>
+      <button id="v-heat" class="v-btn wide" type="button" disabled>&#9211; Heat ON</button>
+    </div>
+
+    <div class="v-row">
+      <span class="v-rowlabel">Fan <span id="v-fanled" class="v-led"></span></span>
+      <button id="v-fan" class="v-btn wide" type="button" disabled>&#11034; Fan ON</button>
+    </div>
+
+    <div class="v-row">
+      <span class="v-rowlabel">Bag</span>
+      <button id="v-fill" class="v-btn wide" type="button" disabled>&#9201; Fill bag (41s)</button>
+    </div>
+  </section>
+
+  <!-- ===== Settings ===== -->
+  <section class="v-tabpanel" data-tab="settings" role="tabpanel" hidden>
+    <h2 class="v-subhead">Device</h2>
+    <pre id="v-device">Connect to read serial number, firmware versions, and hours of operation.</pre>
+
+    <h2 class="v-subhead">Options</h2>
+    <div id="v-settings" class="v-panel">
+      <div class="v-row">
+        <span class="v-rowlabel">Auto-off</span>
+        <input id="v-shutoff-in" class="v-num" type="number" min="1" max="480" step="1" inputmode="numeric" aria-label="Auto-off minutes" disabled>
+        <span class="v-unit">min</span>
+        <button id="v-shutoff-set" class="v-btn" type="button" disabled>Set</button>
+        <span class="v-hint" id="v-shutoff-cur"></span>
+      </div>
+      <div class="v-row">
+        <span class="v-rowlabel">LED Brightness %</span>
+        <input id="v-led-in" class="v-num" type="number" min="0" max="100" step="1" inputmode="numeric" aria-label="LED brightness percent (0-100)" disabled>
+        <button id="v-led-set" class="v-btn" type="button" disabled>Set</button>
+        <span class="v-hint" id="v-led-cur"></span>
+      </div>
+      <div class="v-row">
+        <span class="v-rowlabel">Units</span>
+        <div class="v-seg" id="v-units" role="group" aria-label="Temperature units shown on the device">
+          <button class="v-segbtn" type="button" data-unit="C" aria-pressed="false" disabled>&deg;C</button>
+          <button class="v-segbtn" type="button" data-unit="F" aria-pressed="false" disabled>&deg;F</button>
+        </div>
+        <span class="v-hint" id="v-units-cur"></span>
+      </div>
+      <div class="v-row">
+        <label class="v-check"><input type="checkbox" id="v-cooldisp" disabled> Show temperature while cooling</label>
+      </div>
+      <div class="v-row">
+        <label class="v-check"><input type="checkbox" id="v-vibrate" disabled> Vibration alert (buzz on target reached)</label>
+      </div>
+      <p class="v-hint">These change the Volcano's own screen and haptics &mdash; the Control panel always reads &deg;C, since the device reports temperature in &deg;C over BLE regardless.</p>
+    </div>
+  </section>
+
+  <!-- ===== Workflows ===== -->
+  <section class="v-tabpanel" data-tab="workflows" role="tabpanel" hidden>
+    <p class="v-hint">Script your own heat / fan / wait sequences (like Project Onyx) &mdash; saved in this browser, run over the live connection. See <a href="help.html" target="_blank" rel="noopener">Help</a> for how each action works.</p>
+    <div id="v-workflows"></div>
+  </section>
+
 </div>
-
-<h2 id="workflows">[ Workflows ]</h2>
-<p class="v-hint">Script your own heat / fan / wait sequences (like Project Onyx) &mdash; saved in this browser, run over the live connection.</p>
-<div id="v-workflows"></div>
-
-<h2 id="faq">[ Help / FAQ ]</h2>
-<div class="v-faq">
-  <details>
-    <summary>It won't connect, or no device shows up</summary>
-    <p>The Volcano allows only one Bluetooth connection at a time. If Home Assistant or the Storz &amp; Bickel app is connected, disconnect it first. Also check that Bluetooth is on, the unit is powered, and you're within a few metres.</p>
-  </details>
-  <details>
-    <summary>Which browsers and devices work?</summary>
-    <p>Desktop Chrome, Edge, or Opera, and Chrome on Android. iOS, Firefox, and Safari don't implement Web Bluetooth, so they can't connect. The page must be served over HTTPS (localhost also works).</p>
-  </details>
-  <details>
-    <summary>Does it work over the internet, or as remote control?</summary>
-    <p>No &mdash; it's local only. The browser talks straight to the device over Bluetooth, so you have to be in range. Nothing is sent to any server.</p>
-  </details>
-  <details>
-    <summary>Do I need an app or account? Where's my data?</summary>
-    <p>No app, no account, no backend. Your presets, workflows, and the "heat on connect" preference are stored in your browser and never leave your machine.</p>
-  </details>
-  <details>
-    <summary>Can I use this and Home Assistant at the same time?</summary>
-    <p>No &mdash; the Volcano accepts only one connection. Disconnect one to use the other.</p>
-  </details>
-  <details>
-    <summary>I set &deg;F but the panel still shows &deg;C</summary>
-    <p>The &deg;C/&deg;F switch changes the Volcano's own screen. This panel always shows &deg;C, because the device reports temperature in &deg;C over Bluetooth regardless of its display setting.</p>
-  </details>
-  <details>
-    <summary>What does "Run ladder" do?</summary>
-    <p>It turns the heater on and steps the target 179&rarr;230&nbsp;&deg;C, one rung every 5&nbsp;minutes (~35&nbsp;min) &mdash; the "Vapesuvius" full-spectrum session, with a live countdown. Press it again to stop.</p>
-  </details>
-  <details>
-    <summary>What are Workflows?</summary>
-    <p>A small editor for scripting your own heat / fan / wait sequences &mdash; target temperatures, pauses, conditional temperature ladders, and loops. Save as many as you like and run them over the live connection.</p>
-  </details>
-  <details>
-    <summary>It disconnected on its own &mdash; now what?</summary>
-    <p>Click <strong>Reconnect</strong> (it appears after a drop) to reconnect to the same unit without picking it again. If that fails, use Connect.</p>
-  </details>
-  <details>
-    <summary>Can I install it as an app?</summary>
-    <p>Yes &mdash; it's a PWA. Your browser will offer to install it (or use the Install button), and it works offline after the first load. The Bluetooth link still needs the device in range.</p>
-  </details>
-  <details>
-    <summary>Is it safe?</summary>
-    <p>It's a 230&nbsp;&deg;C heater. The page clamps the range to 40&ndash;230&nbsp;&deg;C and asks before turning heat on, and the device's own auto-off timer still applies &mdash; but don't walk away from a running unit.</p>
-  </details>
-</div>
-
-<h2 id="notes">[ Notes ]</h2>
-
-<pre>The GATT it uses, all under service <code>10110000-5354-4f52-5a26-4249434b454c</code>
-(the tail spells <code>STORZ&amp;BICKEL</code> in ASCII):
-
-  current temp   <code>&hellip;0001</code>  read / notify, uint16 LE &divide; 10
-  set temp       <code>&hellip;0003</code>  write (target &times; 10), uint16 LE
-  heat on / off  <code>&hellip;000f</code> / <code>&hellip;0010</code>  write [1] / [0]
-  fan on / off   <code>&hellip;0013</code> / <code>&hellip;0014</code>  write [1] / [0]
-  status regs    service <code>10100000&hellip;</code>, PRJSTAT1 masks (heat 32, pump 8192)
-  setting regs   PRJSTAT2 <code>&hellip;000d</code> (&deg;F <code>0x200</code>, cooling-display <code>0x1000</code>),
-                 PRJSTAT3 <code>&hellip;000e</code> (vibration <code>0x400</code>)
-
-Heat and fan state are read back from the PRJSTAT1 register every couple of
-seconds, so the indicators reflect the device, not just what you clicked.
-
-Units, cooling-display, and vibration are active-low bits in PRJSTAT2/3: write
-the mask alone to clear a bit (feature on), or <code>0x10000 | mask</code> to set it (off).
-They change the Volcano's own display and buzzer, not this panel.
-
-Fill bag runs the pump for 41&nbsp;s with a countdown (standard S&amp;B Easy Valve) &mdash;
-heat to your target first, and give XL bags 75&ndash;100&nbsp;s.
-
-Run ladder turns heat on and walks 179&rarr;230&nbsp;&deg;C, one rung every 5&nbsp;min
-(~35&nbsp;min total) with a live countdown.</pre>
 
 <hr>
 
-<p class="sub">BLE protocol reverse-engineered by
-<a href="https://github.com/SavageNL/home-assistant-volcano-hybrid" rel="noopener">SavageNL/home-assistant-volcano-hybrid</a>.
-Live version at <a href="https://magikh0e.pl/pubHomeAutomation/volcano-control.html" rel="noopener">magikh0e.pl</a>.
-Not affiliated with Storz &amp; Bickel. &mdash; by magikh0e</p>
+<footer>
+  <p class="sub">BLE protocol reverse-engineered by
+  <a href="https://github.com/SavageNL/home-assistant-volcano-hybrid" rel="noopener">SavageNL/home-assistant-volcano-hybrid</a> &middot;
+  <a href="help.html" target="_blank" rel="noopener">Help / FAQ &amp; protocol notes</a> &middot;
+  also embedded on <a href="https://magikh0e.pl/pubHomeAutomation/volcano-control.html" rel="noopener">magikh0e.pl</a>.
+  Not affiliated with Storz &amp; Bickel. &mdash; by magikh0e</p>
+</footer>
 
 <script src="volcano-ble.js" defer></script>
 <script src="pwa.js" defer></script>
+<script src="tabs.js" defer></script>
 </body>
 </html>

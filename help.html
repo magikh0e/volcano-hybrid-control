@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Help &amp; FAQ &mdash; Volcano Hybrid Web Bluetooth Control</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Help, requirements, FAQ, and BLE protocol notes for the Volcano Hybrid Web Bluetooth controller.">
+<link rel="stylesheet" href="volcano.css">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+
+<img class="banner" src="banner.webp" alt="Volcano Hybrid &mdash; Web BLE Controller">
+
+<h1>Help &amp; FAQ</h1>
+<p class="sub"><a href="index.html">&larr; back to the controller</a></p>
+
+<h2>Before you connect</h2>
+<pre>  &mdash; <strong>Chromium only.</strong> Desktop Chrome / Edge / Opera, or Android Chrome.
+    No iOS, no Firefox, no Safari &mdash; they don't implement Web Bluetooth.
+  &mdash; <strong>Secure context.</strong> Serve over HTTPS, or run it from http://localhost.
+  &mdash; <strong>Local, not remote.</strong> Works only within Bluetooth range of the
+    Volcano. This is not remote control.
+  &mdash; <strong>One connection at a time.</strong> The Volcano allows a single BLE link.
+    If Home Assistant or the S&amp;B app is connected, this page can't be &mdash;
+    disconnect that first (or vice-versa).
+  &mdash; <strong>It's a 230&nbsp;&deg;C heater.</strong> The page clamps 40&ndash;230&nbsp;&deg;C and confirms
+    before turning heat on, but don't walk away from a running unit.</pre>
+
+<h2>FAQ</h2>
+<div class="v-faq">
+  <details>
+    <summary>It won't connect, or no device shows up</summary>
+    <p>The Volcano allows only one Bluetooth connection at a time. If Home Assistant or the Storz &amp; Bickel app is connected, disconnect it first. Also check that Bluetooth is on, the unit is powered, and you're within a few metres.</p>
+  </details>
+  <details>
+    <summary>Which browsers and devices work?</summary>
+    <p>Desktop Chrome, Edge, or Opera, and Chrome on Android. iOS, Firefox, and Safari don't implement Web Bluetooth, so they can't connect. The page must be served over HTTPS (localhost also works).</p>
+  </details>
+  <details>
+    <summary>Does it work over the internet, or as remote control?</summary>
+    <p>No &mdash; it's local only. The browser talks straight to the device over Bluetooth, so you have to be in range. Nothing is sent to any server.</p>
+  </details>
+  <details>
+    <summary>Do I need an app or account? Where's my data?</summary>
+    <p>No app, no account, no backend. Your presets, workflows, and the "heat on connect" preference are stored in your browser and never leave your machine.</p>
+  </details>
+  <details>
+    <summary>Can I use this and Home Assistant at the same time?</summary>
+    <p>No &mdash; the Volcano accepts only one connection. Disconnect one to use the other.</p>
+  </details>
+  <details>
+    <summary>I set &deg;F but the panel still shows &deg;C</summary>
+    <p>The &deg;C/&deg;F switch changes the Volcano's own screen. The Control panel always shows &deg;C, because the device reports temperature in &deg;C over Bluetooth regardless of its display setting.</p>
+  </details>
+  <details>
+    <summary>What does "Run ladder" do?</summary>
+    <p>It turns the heater on and steps the target 179&rarr;230&nbsp;&deg;C, one rung every 5&nbsp;minutes (~35&nbsp;min) &mdash; the "Vapesuvius" full-spectrum session, with a live countdown. Press it again to stop.</p>
+  </details>
+  <details>
+    <summary>What are Workflows, and what does each action do?</summary>
+    <p>A small editor for scripting your own sequences. Action types: <strong>Heat On</strong> (optionally set a target), <strong>Heat Off</strong>, <strong>Fan On</strong> for N seconds (or "background", which doesn't block the next step), <strong>Wait</strong>, <strong>Set LED</strong>, <strong>Conditional Temp Set</strong> (read the current target, match a rung, bump to the next &mdash; a temperature ladder as data), <strong>Exit When Temp Reached</strong>, and <strong>Loop From Beginning</strong>. Save as many as you like and run them over the live connection.</p>
+  </details>
+  <details>
+    <summary>It disconnected on its own &mdash; now what?</summary>
+    <p>Click <strong>Reconnect</strong> (it appears after a drop) to reconnect to the same unit without picking it again. If that fails, use Connect.</p>
+  </details>
+  <details>
+    <summary>Can I install it as an app?</summary>
+    <p>Yes &mdash; it's a PWA. Your browser will offer to install it (or use the Install button on the controller), and it works offline after the first load. The Bluetooth link still needs the device in range.</p>
+  </details>
+  <details>
+    <summary>Is it safe?</summary>
+    <p>It's a 230&nbsp;&deg;C heater. The page clamps the range to 40&ndash;230&nbsp;&deg;C and asks before turning heat on, and the device's own auto-off timer still applies &mdash; but don't walk away from a running unit.</p>
+  </details>
+</div>
+
+<h2>Protocol notes</h2>
+<pre>The GATT it uses, all under service <code>10110000-5354-4f52-5a26-4249434b454c</code>
+(the tail spells <code>STORZ&amp;BICKEL</code> in ASCII):
+
+  current temp   <code>&hellip;0001</code>  read / notify, uint16 LE &divide; 10
+  set temp       <code>&hellip;0003</code>  write (target &times; 10), uint16 LE
+  heat on / off  <code>&hellip;000f</code> / <code>&hellip;0010</code>  write [1] / [0]
+  fan on / off   <code>&hellip;0013</code> / <code>&hellip;0014</code>  write [1] / [0]
+  status regs    service <code>10100000&hellip;</code>, PRJSTAT1 masks (heat 32, pump 8192)
+  setting regs   PRJSTAT2 <code>&hellip;000d</code> (&deg;F <code>0x200</code>, cooling-display <code>0x1000</code>),
+                 PRJSTAT3 <code>&hellip;000e</code> (vibration <code>0x400</code>)
+
+Heat and fan state are read back from the PRJSTAT1 register every couple of
+seconds, so the indicators reflect the device, not just what you clicked.
+
+Units, cooling-display, and vibration are active-low bits in PRJSTAT2/3: write
+the mask alone to clear a bit (feature on), or <code>0x10000 | mask</code> to set it (off).
+They change the Volcano's own display and buzzer, not this panel.
+
+Fill bag runs the pump for 41&nbsp;s with a countdown (standard S&amp;B Easy Valve) &mdash;
+heat to your target first, and give XL bags 75&ndash;100&nbsp;s.
+
+Run ladder turns heat on and walks 179&rarr;230&nbsp;&deg;C, one rung every 5&nbsp;min
+(~35&nbsp;min total) with a live countdown.</pre>
+
+<hr>
+
+<p class="sub"><a href="index.html">&larr; back to the controller</a> &middot;
+BLE protocol reverse-engineered by
+<a href="https://github.com/SavageNL/home-assistant-volcano-hybrid" rel="noopener">SavageNL/home-assistant-volcano-hybrid</a>.
+Not affiliated with Storz &amp; Bickel. &mdash; by magikh0e</p>
+
+</body>
+</html>
