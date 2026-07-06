@@ -57,6 +57,11 @@ so disconnect Home Assistant or the S&amp;B app first (or vice-versa).
   (~35 min) with a live countdown.
 - **Fill bag** — runs the pump 41 s (standard S&amp;B Easy Valve) with a countdown
   and auto-stop.
+- **Workflows** — a built-in editor to script your own heat / fan / wait
+  sequences (like [Project Onyx](https://github.com/ImACoderImACoderImACoder/onyx)):
+  multiple saved workflows, reorderable steps, conditional temperature ladders
+  (`if temp → set / wait`), loops, an exit-on-temperature step, and JSON
+  import/export. Runs over the live connection with a live step readout and Stop.
 - **Session readout** — while heating, shows how long it's been running and a
   live auto-off countdown (the minutes left before it shuts itself down).
 - **Error surfacing** — flags the device's `PRJSTAT1` / `PRJSTAT2` error bits if

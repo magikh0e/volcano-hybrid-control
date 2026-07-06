@@ -185,4 +185,39 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
   color: #ff9a9a;
 }
 
+/* ---- workflow editor ---- */
+.v-wf-bar { display: flex; gap: 0.5rem; margin: 0.5rem 0 0.8rem; flex-wrap: wrap; }
+.v-wf-card {
+  border: 1px solid #1f3a2a; border-radius: 8px;
+  padding: 0.7rem; margin: 0.7rem 0; background: #0a140d;
+}
+.v-wf-card.running { border-color: var(--accent, #00ff9c); }
+.v-wf-head { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.v-wf-name {
+  flex: 1; min-width: 8rem; font: inherit; color: var(--accent, #00ff9c);
+  background: #04140c; border: 1px solid #1f3a2a; border-radius: 6px; padding: 0.4rem 0.5rem;
+}
+.v-wf-run {
+  margin: 0.5rem 0; padding: 0.4rem 0.6rem; font-size: 0.9rem;
+  border-left: 3px solid var(--accent, #00ff9c); background: #04140c;
+}
+.v-wf-actions { margin: 0.6rem 0; }
+.v-wf-action { border: 1px solid #14261a; border-radius: 6px; padding: 0.5rem; margin: 0.4rem 0; }
+.v-wf-acthead { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.v-wf-num { color: var(--accent, #00ff9c); font-size: 0.85rem; }
+.v-wf-actctrls { display: flex; gap: 0.3rem; }
+.v-wf-actbody { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.4rem; }
+.v-wf-type {
+  font: inherit; color: var(--accent, #00ff9c); background: #04140c;
+  border: 1px solid #1f3a2a; border-radius: 6px; padding: 0.35rem 0.4rem;
+}
+.v-wf-params { display: inline-flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
+.v-wf-plabel { opacity: 0.7; font-size: 0.85rem; }
+.v-wf-cond { display: flex; flex-direction: column; gap: 0.4rem; width: 100%; margin-top: 0.4rem; }
+.v-wf-condrow { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
+.v-wf-card .v-num { width: 4rem; }
+.v-wf-del { color: #ff9a9a; border-color: #6b1f1f; }
+.v-wf-del:hover:not(:disabled) { background: #2a1414; border-color: #ff6b6b; }
+.v-wf-add, .v-wf-addcond { width: 100%; }
+
 /* Hide the live controls until connected is not required — JS toggles state. */

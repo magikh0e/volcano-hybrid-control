@@ -82,7 +82,8 @@
       const el = $(id); if (el) el.disabled = !on;
     });
     document.querySelectorAll(".v-segbtn").forEach((el) => { el.disabled = !on; });
-    renderPresets();   // preset buttons follow connection state (unless editing)
+    renderPresets();     // preset buttons follow connection state (unless editing)
+    renderWorkflows();   // workflow Run buttons follow connection state
     if (!on) {
       setLed("v-heatled", false); setLed("v-fanled", false);
       const cur = $("v-cur"); if (cur) cur.textContent = "---";
@@ -318,6 +319,7 @@
   }
 
   function onDisconnected() {
+    wfStop = true;   // stop any running workflow
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     if (fillTimer) { clearInterval(fillTimer); fillTimer = null; }
     if (ladderTimer) { clearInterval(ladderTimer); ladderTimer = null; }
@@ -630,6 +632,310 @@
     } catch (e) { status("Ladder failed: " + (e.message || e), "err"); }
   }
 
+  // ===== Workflows ===========================================================
+  // A workflow is { id, name, actions: [ {type, ...params} ] }, saved in
+  // localStorage. Action types mirror Project Onyx:
+  //   heatOn {temp?}  heatOff  fanOn {secs}  fanOnGlobal {secs}  wait {secs}
+  //   setLED {pct}  exitWhenTemp {temp}  loop
+  //   conditionalTemp { def:{temp,wait}, conditions:[{ifTemp,thenSet,wait}] }
+
+  const WF_TYPES = [
+    { v: "heatOn",          label: "🔥 Heat On" },
+    { v: "heatOff",         label: "❄ Heat Off" },
+    { v: "fanOn",           label: "💨 Fan On" },
+    { v: "fanOnGlobal",     label: "🌀 Fan On (background)" },
+    { v: "wait",            label: "⏸ Wait" },
+    { v: "setLED",          label: "💡 Set LED Brightness" },
+    { v: "conditionalTemp", label: "🎯 Conditional Temp Set" },
+    { v: "exitWhenTemp",    label: "🚪 Exit When Temp Reached" },
+    { v: "loop",            label: "🔁 Loop From Beginning" },
+  ];
+
+  let workflows = [];
+  let wfSeq = 1;
+  let wfRunning = false, wfStop = false, wfRunId = null;
+
+  function loadWorkflows() {
+    try {
+      const raw = localStorage.getItem("volcano-workflows");
+      if (raw) { const a = JSON.parse(raw); if (Array.isArray(a)) return a; }
+    } catch (e) { /* ignore */ }
+    return [];
+  }
+  function saveWorkflows() {
+    try { localStorage.setItem("volcano-workflows", JSON.stringify(workflows)); } catch (e) { /* ignore */ }
+  }
+  function wfNewId() { return "wf" + (wfSeq++) + "_" + Math.max(0, workflows.length); }
+
+  function clampT(v) { v = Math.round(Number(v)); if (!Number.isFinite(v)) return MIN_T; return Math.min(MAX_T, Math.max(MIN_T, v)); }
+  function clampSecs(v) { v = Math.round(Number(v)); return Number.isFinite(v) && v > 0 ? v : 0; }
+  function clampPct(v) { v = Math.round(Number(v)); if (!Number.isFinite(v)) return 0; return Math.min(100, Math.max(0, v)); }
+
+  function defaultAction(type) {
+    switch (type) {
+      case "heatOn": return { type, temp: "" };
+      case "fanOn": case "fanOnGlobal": return { type, secs: 41 };
+      case "wait": return { type, secs: 30 };
+      case "setLED": return { type, pct: 70 };
+      case "exitWhenTemp": return { type, temp: 200 };
+      case "conditionalTemp": return { type, def: { temp: 179, wait: 30 }, conditions: [{ ifTemp: 179, thenSet: 185, wait: 30 }] };
+      default: return { type };  // heatOff, loop
+    }
+  }
+
+  function wfDesc(a) {
+    switch (a.type) {
+      case "heatOn": return "Heat on" + (a.temp != null && a.temp !== "" ? " → " + a.temp + " °C" : "");
+      case "heatOff": return "Heat off";
+      case "fanOn": return "Fan " + (a.secs || 0) + "s";
+      case "fanOnGlobal": return "Fan " + (a.secs || 0) + "s (bg)";
+      case "wait": return "Wait " + (a.secs || 0) + "s";
+      case "setLED": return "LED " + (a.pct || 0) + "%";
+      case "exitWhenTemp": return "Exit when ≥ " + (a.temp || 0) + " °C";
+      case "conditionalTemp": return "Conditional temp set";
+      case "loop": return "Loop from beginning";
+      default: return a.type;
+    }
+  }
+
+  // ---- executor -------------------------------------------------------------
+
+  function sleep(ms) { return new Promise((res) => setTimeout(res, ms)); }
+  function wfSetRun(txt) { const el = $("v-wf-run"); if (el) el.textContent = txt; }
+
+  async function wfSleep(secs, label) {
+    secs = Math.max(0, Math.round(secs));
+    for (let r = secs; r > 0; r--) {
+      if (wfStop) return;
+      wfSetRun(label + " — " + fmtDur(r));
+      await sleep(1000);
+    }
+  }
+  async function readTargetTemp()  { try { return Math.round(parseTemp(await setTempChar.readValue())); } catch (e) { return null; } }
+  async function readCurrentTemp() { try { return Math.round(parseTemp(await curTempChar.readValue())); } catch (e) { return null; } }
+  async function setTargetTemp(t) {
+    target = Math.min(MAX_T, Math.max(MIN_T, Math.round(t))); showTarget();
+    const buf = new Uint8Array(2); new DataView(buf.buffer).setUint16(0, target * 10, true);
+    const ch = setTempChar || await svc.getCharacteristic(SET_TEMP);
+    if (ch.writeValueWithResponse) await ch.writeValueWithResponse(buf); else await ch.writeValue(buf);
+  }
+
+  async function runWorkflow(wf) {
+    if (!svc) { status("Connect first to run a workflow.", "warn"); return; }
+    if (wfRunning) return;
+    if (!wf.actions || !wf.actions.length) { status("This workflow has no actions.", "warn"); return; }
+    if (!confirm('Run "' + (wf.name || "workflow") + '"? It drives the heater and pump — don’t leave it unattended.')) return;
+    wfRunning = true; wfStop = false; wfRunId = wf.id;
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }   // avoid GATT contention during the run
+    renderWorkflows();
+    let i = 0, guard = 0, paused = false;
+    try {
+      while (i < wf.actions.length && !wfStop) {
+        if (++guard > 100000) throw new Error("step limit exceeded");
+        const a = wf.actions[i];
+        wfSetRun("Step " + (i + 1) + "/" + wf.actions.length + " — " + wfDesc(a));
+        switch (a.type) {
+          case "heatOn":
+            await write(HEAT_ON, [1]); heatOn = true; setLed("v-heatled", true);
+            if (a.temp != null && a.temp !== "") await setTargetTemp(a.temp);
+            i++; break;
+          case "heatOff":
+            await write(HEAT_OFF, [0]); heatOn = false; setLed("v-heatled", false); i++; break;
+          case "fanOn":
+            await write(FAN_ON, [1]); fanOn = true; setLed("v-fanled", true);
+            await wfSleep(a.secs, "Fan");
+            await write(FAN_OFF, [0]); fanOn = false; setLed("v-fanled", false);
+            paused = true; i++; break;
+          case "fanOnGlobal":
+            await write(FAN_ON, [1]); fanOn = true; setLed("v-fanled", true);
+            if (a.secs > 0) setTimeout(() => { write(FAN_OFF, [0]).catch(() => {}); fanOn = false; setLed("v-fanled", false); }, a.secs * 1000);
+            i++; break;
+          case "wait":
+            await wfSleep(a.secs, "Wait"); paused = true; i++; break;
+          case "setLED":
+            await writeU16(LED_BRIGHT, clampPct(a.pct)); i++; break;
+          case "exitWhenTemp": {
+            const cur = await readCurrentTemp();
+            if (cur != null && cur >= clampT(a.temp)) { wfSetRun("Exit — reached " + cur + " °C"); i = wf.actions.length; }
+            else i++;
+            break;
+          }
+          case "conditionalTemp": {
+            const cur = await readTargetTemp();
+            const cond = (a.conditions || []).find((c) => clampT(c.ifTemp) === cur);
+            const set = cond ? clampT(cond.thenSet) : (a.def ? clampT(a.def.temp) : null);
+            const w = cond ? cond.wait : (a.def ? a.def.wait : 0);
+            await write(HEAT_ON, [1]); heatOn = true; setLed("v-heatled", true);
+            if (set != null) await setTargetTemp(set);
+            await wfSleep(w, "Hold " + (set != null ? set + " °C" : "")); paused = true; i++; break;
+          }
+          case "loop":
+            if (!paused) throw new Error("a Loop with no Wait/Fan step would run forever — add a Wait");
+            paused = false; i = 0; await sleep(50); break;
+          default: i++;
+        }
+      }
+      wfSetRun(wfStop ? "Stopped." : "Workflow complete.");
+      status(wfStop ? "Workflow stopped." : "Workflow complete.", "ok");
+    } catch (e) {
+      wfSetRun("Error: " + (e.message || e));
+      status("Workflow error: " + (e.message || e), "err");
+    } finally {
+      wfRunning = false; wfRunId = null;
+      if (svc && !pollTimer) pollTimer = setInterval(pollStatus, 2000);   // resume polling
+      renderWorkflows();
+    }
+  }
+
+  // ---- editor ---------------------------------------------------------------
+
+  // Tiny DOM builder: el("div", {class, text, value, onClick, disabled...}, ...kids)
+  function el(tag, props, ...kids) {
+    const n = document.createElement(tag);
+    if (props) for (const k in props) {
+      const v = props[k];
+      if (k === "class") n.className = v;
+      else if (k === "text") n.textContent = v;
+      else if (k === "value") n.value = v;
+      else if (k === "disabled" || k === "selected" || k === "checked") n[k] = !!v;
+      else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2).toLowerCase(), v);
+      else if (v != null) n.setAttribute(k, v);
+    }
+    kids.flat().forEach((c) => { if (c != null && c !== false) n.append(c.nodeType ? c : document.createTextNode(String(c))); });
+    return n;
+  }
+  function wfNum(val, on, attrs) {
+    return el("input", Object.assign({ class: "v-num", type: "number", inputmode: "numeric",
+      value: (val == null ? "" : val), disabled: wfRunning, onInput: on }, attrs || {}));
+  }
+
+  function renderWorkflows() {
+    const box = $("v-workflows"); if (!box) return;
+    box.textContent = "";
+    const connected = document.body.classList.contains("v-connected");
+    box.append(el("div", { class: "v-wf-bar" },
+      el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: wfCreate }, "+ New workflow"),
+      el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: wfImport }, "Import")));
+    if (!workflows.length)
+      box.append(el("p", { class: "v-hint" }, "No workflows yet — create one to script a heat / fan / wait sequence."));
+    workflows.forEach((wf) => box.append(renderWorkflowCard(wf, connected)));
+  }
+
+  function renderWorkflowCard(wf, connected) {
+    const running = wfRunning && wfRunId === wf.id;
+    const card = el("div", { class: "v-wf-card" + (running ? " running" : "") });
+    card.append(el("div", { class: "v-wf-head" },
+      el("input", { class: "v-wf-name", type: "text", value: wf.name || "", "aria-label": "Workflow name",
+        disabled: wfRunning, onInput: (e) => { wf.name = e.target.value; saveWorkflows(); } }),
+      running
+        ? el("button", { class: "v-btn v-wf-stop", type: "button", onClick: () => { wfStop = true; } }, "■ Stop")
+        : el("button", { class: "v-btn", type: "button", disabled: !connected || wfRunning,
+            title: connected ? "" : "Connect to run", onClick: () => runWorkflow(wf) }, "▶ Run"),
+      el("button", { class: "v-mini", type: "button", disabled: wfRunning, title: "Export JSON", onClick: () => wfExport(wf) }, "⤓"),
+      el("button", { class: "v-mini v-wf-del", type: "button", disabled: wfRunning, title: "Delete workflow",
+        onClick: () => { if (confirm('Delete workflow "' + (wf.name || "") + '"?')) { workflows = workflows.filter((w) => w !== wf); saveWorkflows(); renderWorkflows(); } } }, "🗑")));
+    if (running) card.append(el("div", { class: "v-wf-run", id: "v-wf-run" }, "Starting…"));
+    const list = el("div", { class: "v-wf-actions" });
+    (wf.actions || []).forEach((a, ai) => list.append(renderActionRow(wf, a, ai)));
+    card.append(list);
+    card.append(el("button", { class: "v-btn v-wf-add", type: "button", disabled: wfRunning,
+      onClick: () => { wf.actions = wf.actions || []; wf.actions.push(defaultAction("heatOn")); saveWorkflows(); renderWorkflows(); } }, "+ Add action"));
+    return card;
+  }
+
+  function moveAction(wf, ai, d) {
+    const j = ai + d; if (j < 0 || j >= wf.actions.length) return;
+    const t = wf.actions[ai]; wf.actions[ai] = wf.actions[j]; wf.actions[j] = t;
+    saveWorkflows(); renderWorkflows();
+  }
+
+  function renderActionRow(wf, a, ai) {
+    const sel = el("select", { class: "v-wf-type", disabled: wfRunning,
+      onChange: (e) => { wf.actions[ai] = defaultAction(e.target.value); saveWorkflows(); renderWorkflows(); } },
+      WF_TYPES.map((t) => el("option", { value: t.v, selected: t.v === a.type }, t.label)));
+    const ctrls = el("div", { class: "v-wf-actctrls" },
+      el("button", { class: "v-mini", type: "button", disabled: wfRunning || ai === 0, title: "Move up", onClick: () => moveAction(wf, ai, -1) }, "▲"),
+      el("button", { class: "v-mini", type: "button", disabled: wfRunning || ai === wf.actions.length - 1, title: "Move down", onClick: () => moveAction(wf, ai, 1) }, "▼"),
+      el("button", { class: "v-mini v-wf-del", type: "button", disabled: wfRunning, title: "Delete action",
+        onClick: () => { wf.actions.splice(ai, 1); saveWorkflows(); renderWorkflows(); } }, "🗑"));
+    return el("div", { class: "v-wf-action" },
+      el("div", { class: "v-wf-acthead" }, el("span", { class: "v-wf-num" }, "Action " + (ai + 1)), ctrls),
+      el("div", { class: "v-wf-actbody" }, sel, renderActionParams(wf, a)));
+  }
+
+  function renderActionParams(wf, a) {
+    const save = () => saveWorkflows();
+    switch (a.type) {
+      case "heatOn":
+        return el("span", { class: "v-wf-params" }, el("span", { class: "v-wf-plabel" }, "target"),
+          wfNum(a.temp, (e) => { a.temp = e.target.value === "" ? "" : clampT(e.target.value); save(); }, { min: MIN_T, max: MAX_T, placeholder: "no change" }),
+          el("span", { class: "v-unit" }, "°C"));
+      case "fanOn": case "fanOnGlobal": case "wait":
+        return el("span", { class: "v-wf-params" },
+          wfNum(a.secs, (e) => { a.secs = clampSecs(e.target.value); save(); }, { min: 0 }), el("span", { class: "v-unit" }, "s"));
+      case "setLED":
+        return el("span", { class: "v-wf-params" },
+          wfNum(a.pct, (e) => { a.pct = clampPct(e.target.value); save(); }, { min: 0, max: 100 }), el("span", { class: "v-unit" }, "%"));
+      case "exitWhenTemp":
+        return el("span", { class: "v-wf-params" }, el("span", { class: "v-wf-plabel" }, "when ≥"),
+          wfNum(a.temp, (e) => { a.temp = clampT(e.target.value); save(); }, { min: MIN_T, max: MAX_T }), el("span", { class: "v-unit" }, "°C"));
+      case "conditionalTemp":
+        return renderConditional(a);
+      default:  // heatOff, loop
+        return el("span", { class: "v-wf-params v-hint" }, a.type === "heatOff" ? "turns the heater off" : "jumps back to Action 1");
+    }
+  }
+
+  function renderConditional(a) {
+    a.def = a.def || { temp: 179, wait: 30 };
+    a.conditions = a.conditions || [];
+    const save = () => saveWorkflows();
+    const wrap = el("div", { class: "v-wf-cond" });
+    wrap.append(el("div", { class: "v-wf-condrow" },
+      el("span", { class: "v-wf-plabel" }, "default"),
+      wfNum(a.def.temp, (e) => { a.def.temp = clampT(e.target.value); save(); }, { min: MIN_T, max: MAX_T }), el("span", { class: "v-unit" }, "°C"),
+      el("span", { class: "v-wf-plabel" }, "wait"),
+      wfNum(a.def.wait, (e) => { a.def.wait = clampSecs(e.target.value); save(); }, { min: 0 }), el("span", { class: "v-unit" }, "s")));
+    a.conditions.forEach((c, ci) => {
+      wrap.append(el("div", { class: "v-wf-condrow" },
+        el("span", { class: "v-wf-plabel" }, "if"),
+        wfNum(c.ifTemp, (e) => { c.ifTemp = clampT(e.target.value); save(); }, { min: MIN_T, max: MAX_T }),
+        el("span", { class: "v-wf-plabel" }, "→ set"),
+        wfNum(c.thenSet, (e) => { c.thenSet = clampT(e.target.value); save(); }, { min: MIN_T, max: MAX_T }),
+        el("span", { class: "v-wf-plabel" }, "wait"),
+        wfNum(c.wait, (e) => { c.wait = clampSecs(e.target.value); save(); }, { min: 0 }),
+        el("button", { class: "v-mini v-wf-del", type: "button", disabled: wfRunning, title: "Remove condition",
+          onClick: () => { a.conditions.splice(ci, 1); save(); renderWorkflows(); } }, "🗑")));
+    });
+    wrap.append(el("button", { class: "v-btn v-wf-addcond", type: "button", disabled: wfRunning,
+      onClick: () => { a.conditions.push({ ifTemp: 179, thenSet: 185, wait: 30 }); save(); renderWorkflows(); } }, "+ Add condition"));
+    return wrap;
+  }
+
+  function wfCreate() {
+    workflows.push({ id: wfNewId(), name: "New workflow " + (workflows.length + 1), actions: [] });
+    saveWorkflows(); renderWorkflows();
+  }
+  function wfExport(wf) {
+    const json = JSON.stringify(wf);
+    if (navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(json).then(() => status("Workflow JSON copied to clipboard.", "ok"), () => prompt("Workflow JSON:", json));
+    else prompt("Workflow JSON:", json);
+  }
+  function wfImport() {
+    const txt = prompt("Paste workflow JSON:");
+    if (!txt) return;
+    try {
+      const obj = JSON.parse(txt);
+      const arr = Array.isArray(obj) ? obj : [obj];
+      let n = 0;
+      arr.forEach((w) => { if (w && Array.isArray(w.actions)) { w.id = wfNewId(); if (!w.name) w.name = "Imported workflow"; workflows.push(w); n++; } });
+      if (!n) { status("No valid workflow found in that JSON.", "warn"); return; }
+      saveWorkflows(); renderWorkflows();
+      status("Imported " + n + " workflow(s).", "ok");
+    } catch (e) { status("Import failed: invalid JSON.", "err"); }
+  }
+
   function init() {
     if (!navigator.bluetooth) {
       const u = $("v-unsupported"); if (u) u.hidden = false;
@@ -638,7 +944,8 @@
     }
     showTarget();
     presets = loadPresets();
-    setConnected(false);   // also renders the presets
+    workflows = loadWorkflows();
+    setConnected(false);   // also renders the presets + workflows
     const bind = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
     bind("v-connect", "click", connect);
     bind("v-reconnect", "click", reconnect);
