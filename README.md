@@ -10,7 +10,7 @@ Just static files — HTML, CSS, and a little vanilla JS. No build step, no
 framework, no dependencies; installable as a PWA and works offline.
 
 **Live:** [**volcano.magikh0e.pl**](https://volcano.magikh0e.pl/) — the standalone,
-installable app · also [embedded on magikh0e.pl](https://magikh0e.pl/pubHomeAutomation/volcano-control.html)
+installable app.
 
 The tabs — control, settings, the workflow editor, and the console:
 
