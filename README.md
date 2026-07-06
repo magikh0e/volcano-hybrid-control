@@ -117,6 +117,11 @@ BLE protocol reverse-engineered by
 [**SavageNL/home-assistant-volcano-hybrid**](https://github.com/SavageNL/home-assistant-volcano-hybrid) —
 this is a dependency-free browser reimplementation of the parts it documents.
 
+The **workflow editor** is inspired by
+[**Project Onyx**](https://github.com/ImACoderImACoderImACoder/onyx) — its action
+model (heat / fan / wait / LED, conditional temperature ladders, loops) is
+reimplemented here in vanilla JS.
+
 Not affiliated with, endorsed by, or supported by Storz &amp; Bickel. Use at your
 own risk.
 
