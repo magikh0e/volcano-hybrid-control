@@ -136,7 +136,7 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 }
 .v-num:disabled { opacity: 0.4; }
 .v-unit { opacity: 0.75; }
-.v-hint { opacity: 0.6; font-size: 0.85rem; }
+.v-hint { opacity: 0.75; font-size: 0.85rem; }  /* 0.75 keeps hints >= 4.5:1 on the dark bg (WCAG AA); 0.6 fell to ~3.9:1 */
 
 .v-check { display: inline-flex; align-items: center; gap: 0.35rem; opacity: 0.85; cursor: pointer; }
 .v-check input { accent-color: var(--accent, #e08a3c); }

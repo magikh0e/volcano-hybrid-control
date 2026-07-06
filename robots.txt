@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://volcano.magikh0e.pl/sitemap.xml
