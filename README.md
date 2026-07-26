@@ -128,6 +128,12 @@ reimplemented here in vanilla JS.
 Not affiliated with, endorsed by, or supported by Storz &amp; Bickel. Use at your
 own risk.
 
+## Support
+
+Free and open-source, built and maintained in my own time. If it has been handy for your Volcano, a beer is always appreciated and helps keep it going.
+
+<a href="https://buymeacoffee.com/magikh0e"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20beer&emoji=%F0%9F%8D%BA&slug=magikh0e&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a beer" height="42"></a>
+
 ## License
 
 [GPL-3.0-or-later](LICENSE) © 2026 magikh0e.
