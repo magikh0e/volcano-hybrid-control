@@ -702,6 +702,74 @@
     { v: "loop",            label: "🔁 Loop From Beginning" },
   ];
 
+  const WF_HEAT_TIMEOUT_MS = 15 * 60 * 1000;
+
+  // ---- templates ------------------------------------------------------------
+  // Ready-made workflows, modelled on Project Onyx's premade set (step temps
+  // from Vapesuvius' chart). "+ Add" copies one into your own list, where it's
+  // an ordinary, editable workflow.
+
+  // A conditionalTemp that walks `temps` in order: from rung i go to rung i+1;
+  // from anywhere else start at temps[0]. Reverse the array to step down.
+  function wfLadder(temps, wait) {
+    return {
+      type: "conditionalTemp",
+      def: { temp: temps[0], wait: wait },
+      conditions: temps.slice(0, -1).map((t, i) => ({ ifTemp: t, thenSet: temps[i + 1], wait: wait })),
+    };
+  }
+  const VAPESUVIUS = [179, 185, 191, 199, 205, 211, 217, 230];
+  const CAPSULE = [185, 197, 211, 230];
+  const DEV_SPECIAL = [180, 185, 190, 195, 200];
+
+  const WF_TEMPLATES = [
+    { name: "Vapesuvius Temp Step",
+      desc: "One bag per Run. Each Run climbs to the next rung (179 → 185 → 191 → 199 → 205 → 211 → 217 → 230 °C), fills a 34 s bag, then turns the heat off.",
+      actions: [wfLadder(VAPESUVIUS, 5), { type: "fanOnGlobal", secs: 34 }, { type: "heatOff" }] },
+    { name: "Vapesuvius Temp Step ⏪",
+      desc: "The same ladder in reverse. Start hot and step down one rung per Run, filling a bag each time.",
+      actions: [wfLadder(VAPESUVIUS.slice().reverse(), 5), { type: "fanOnGlobal", secs: 34 }, { type: "heatOff" }] },
+    { name: "Temp Step Whip Loop",
+      desc: "A hands-off full session for whip use. Holds each Vapesuvius rung for 200 s, then moves up, and stops at 230 °C (the heat stays on).",
+      actions: [wfLadder(VAPESUVIUS, 200), { type: "exitWhenTemp", temp: 230 }, { type: "loop" }] },
+    { name: "Dosing Capsule Step",
+      desc: "Four rungs sized for a dosing capsule (185 → 197 → 211 → 230 °C). One bag per Run.",
+      actions: [wfLadder(CAPSULE, 5), { type: "fanOnGlobal", secs: 34 }, { type: "heatOff" }] },
+    { name: "Dosing Capsule Step ⏪",
+      desc: "The capsule ladder in reverse, from 230 °C down to 185 °C.",
+      actions: [wfLadder(CAPSULE.slice().reverse(), 5), { type: "fanOnGlobal", secs: 34 }, { type: "heatOff" }] },
+    { name: "Developer's Special",
+      desc: "Onyx's signature. Steps 180 → 200 °C in 5° rungs. At each one it gives a 4 s priming puff and three short bursts, then fills a bag and dims the LED.",
+      actions: [{ type: "setLED", pct: 70 }, wfLadder(DEV_SPECIAL, 0),
+        { type: "fanOn", secs: 4 }, { type: "fanOn", secs: 1 }, { type: "fanOn", secs: 1 }, { type: "fanOn", secs: 1 },
+        { type: "fanOnGlobal", secs: 34 }, { type: "heatOff" }, { type: "setLED", pct: 0 }] },
+    { name: "Really Off",
+      desc: "Heat off and LED off. It's dark and quiet.",
+      actions: [{ type: "heatOff" }, { type: "setLED", pct: 0 }] },
+    { name: "Really On",
+      desc: "Heat on at the current target, LED back to 70%.",
+      actions: [{ type: "heatOn", temp: "" }, { type: "setLED", pct: 70 }] },
+  ];
+
+  let wfTplOpen = false;
+
+  function wfAddTemplate(t) {
+    workflows.push({ id: wfNewId(), name: t.name, actions: sanitizeActions(t.actions) });
+    saveWorkflows(); renderWorkflows();
+    status('Added "' + t.name + '" to your workflows.', "ok");
+  }
+
+  function renderTemplates() {
+    const box = el("div", { class: "v-wf-tpls" },
+      el("p", { class: "v-hint" }, "Ready-made workflows, modelled on Project Onyx's premade set. Adding one copies it into your list below, where you can tweak it."));
+    WF_TEMPLATES.forEach((t) => box.append(el("div", { class: "v-wf-tpl" },
+      el("div", { class: "v-wf-tpltext" },
+        el("strong", null, t.name),
+        el("span", { class: "v-wf-tpldesc" }, t.desc)),
+      el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: () => wfAddTemplate(t) }, "+ Add"))));
+    return box;
+  }
+
   let workflows = [];
   let wfSeq = 1;
   let wfRunning = false, wfStop = false, wfRunId = null;
@@ -762,6 +830,20 @@
       await sleep(1000);
     }
   }
+  // Block until the chamber reaches t (°C) or Stop is pressed. Already at or
+  // above t (e.g. stepping down) returns at once. The Volcano climbs roughly
+  // 1 °C/s, so a 15-minute ceiling only trips if something is wrong.
+  async function wfHeatTo(t) {
+    const started = Date.now();
+    while (!wfStop) {
+      const cur = await readCurrentTemp();
+      if (cur != null) curTemp = cur;
+      if (cur != null && cur >= t) return;
+      if (Date.now() - started > WF_HEAT_TIMEOUT_MS) throw new Error("didn't reach " + t + " °C within 15 min");
+      wfSetRun("Heating to " + t + " °C" + (cur != null ? " — now " + cur + " °C" : ""));
+      await sleep(1000);
+    }
+  }
   async function readTargetTemp()  { try { return Math.round(parseTemp(await setTempChar.readValue())); } catch (e) { return null; } }
   async function readCurrentTemp() { try { return Math.round(parseTemp(await curTempChar.readValue())); } catch (e) { return null; } }
   async function setTargetTemp(t) {
@@ -817,7 +899,10 @@
             const set = cond ? clampT(cond.thenSet) : (a.def ? clampT(a.def.temp) : null);
             const w = cond ? cond.wait : (a.def ? a.def.wait : 0);
             await write(HEAT_ON, [1]); heatOn = true; setLed("v-heatled", true);
-            if (set != null) await setTargetTemp(set);
+            if (set != null) {
+              await setTargetTemp(set);
+              await wfHeatTo(set);   // like Onyx: the hold starts once the rung is reached
+            }
             await wfSleep(w, "Hold " + (set != null ? set + " °C" : "")); paused = true; i++; break;
           }
           case "loop":
@@ -866,9 +951,12 @@
     const connected = document.body.classList.contains("v-connected");
     box.append(el("div", { class: "v-wf-bar" },
       el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: wfCreate }, "+ New workflow"),
+      el("button", { class: "v-btn" + (wfTplOpen ? " active" : ""), type: "button", "aria-expanded": wfTplOpen ? "true" : "false",
+        onClick: () => { wfTplOpen = !wfTplOpen; renderWorkflows(); } }, "📋 Templates"),
       el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: wfImport }, "Import")));
+    if (wfTplOpen) box.append(renderTemplates());
     if (!workflows.length)
-      box.append(el("p", { class: "v-hint" }, "No workflows yet — create one to script a heat / fan / wait sequence."));
+      box.append(el("p", { class: "v-hint" }, "No workflows yet. Start from a template, or create one to script a heat / fan / wait sequence."));
     workflows.forEach((wf) => box.append(renderWorkflowCard(wf, connected)));
   }
 

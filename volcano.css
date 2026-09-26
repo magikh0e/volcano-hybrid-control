@@ -226,6 +226,13 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-wf-del { color: #ff9a9a; border-color: #6b1f1f; }
 .v-wf-del:hover:not(:disabled) { background: #2a1414; border-color: #ff6b6b; }
 .v-wf-add, .v-wf-addcond { width: 100%; }
+.v-wf-bar .v-btn.active { background: var(--accent, #e08a3c); color: #04140c; border-color: var(--accent, #e08a3c); }
+.v-wf-tpls { border: 1px dashed #14261a; border-radius: 8px; padding: 0.6rem; margin-bottom: 0.8rem; }
+.v-wf-tpls > .v-hint { margin-top: 0; }
+.v-wf-tpl { display: flex; gap: 0.6rem; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-top: 1px solid #14261a; }
+.v-wf-tpltext { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.v-wf-tpldesc { opacity: 0.75; font-size: 0.85rem; }
+.v-wf-tpl .v-btn { flex: none; }
 
 /* ---- help / FAQ ---- */
 .v-faq details {

@@ -74,7 +74,19 @@
   </details>
   <details>
     <summary>What are Workflows, and what does each action do?</summary>
-    <p>A small editor for scripting your own sequences. Action types: <strong>Heat On</strong> (optionally set a target), <strong>Heat Off</strong>, <strong>Fan On</strong> for N seconds (or "background", which doesn't block the next step), <strong>Wait</strong>, <strong>Set LED</strong>, <strong>Conditional Temp Set</strong> (read the current target, match a rung, bump to the next &mdash; a temperature ladder as data), <strong>Exit When Temp Reached</strong>, and <strong>Loop From Beginning</strong>. Save as many as you like and run them over the live connection. The action model is inspired by <a href="https://github.com/ImACoderImACoderImACoder/onyx" rel="noopener">Project Onyx</a>.</p>
+    <p>A small editor for scripting your own sequences. Action types: <strong>Heat On</strong> (optionally set a target), <strong>Heat Off</strong>, <strong>Fan On</strong> for N seconds (or "background", which doesn't block the next step), <strong>Wait</strong>, <strong>Set LED</strong>, <strong>Conditional Temp Set</strong>, <strong>Exit When Temp Reached</strong>, and <strong>Loop From Beginning</strong>. Conditional Temp Set is a temperature ladder stored as data. It reads the current target, matches it to a rung and moves up to the next one. It then waits for the chamber to reach that temperature before its hold timer starts. Save as many workflows as you like and run them over the live connection. The action model is inspired by <a href="https://github.com/ImACoderImACoderImACoder/onyx" rel="noopener">Project Onyx</a>.</p>
+  </details>
+  <details>
+    <summary>Are there ready-made workflows?</summary>
+    <p>Yes. On the Workflows tab, click <strong>&#128203; Templates</strong> and <strong>+ Add</strong> any of them to your list. They're modelled on Project Onyx's premade set, with step temperatures from Vapesuvius' chart:</p>
+    <ul>
+      <li><strong>Vapesuvius Temp Step</strong> (and <strong>&#9194;</strong> reverse): each Run moves up one rung, 179 &rarr; 230&nbsp;&deg;C, then fills a 34&nbsp;s bag and turns the heat off.</li>
+      <li><strong>Temp Step Whip Loop</strong>: a full session. It holds each rung for 200&nbsp;s and stops at 230&nbsp;&deg;C.</li>
+      <li><strong>Dosing Capsule Step</strong> (and reverse): four rungs, 185 / 197 / 211 / 230&nbsp;&deg;C, one bag per Run.</li>
+      <li><strong>Developer's Special</strong>: 180 &rarr; 200&nbsp;&deg;C in 5&deg; rungs, with a priming puff and short bursts before each bag.</li>
+      <li><strong>Really Off</strong> / <strong>Really On</strong>: heat and LED together.</li>
+    </ul>
+    <p>A template you add is an ordinary workflow, so you can edit it however you like.</p>
   </details>
   <details>
     <summary>Can I share a workflow with someone?</summary>
