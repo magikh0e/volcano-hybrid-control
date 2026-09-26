@@ -721,6 +721,12 @@
   const VAPESUVIUS = [179, 185, 191, 199, 205, 211, 217, 230];
   const CAPSULE = [185, 197, 211, 230];
   const DEV_SPECIAL = [180, 185, 190, 195, 200];
+  const EVEN_RUNGS = [185, 199, 211, 230];          // Vapesuvius rungs 2 / 4 / 6 / 8
+  const FLAVOR = [170, 175, 180];                   // terpene range, see Help's boiling-point table
+  const FINISHER = [215, 220, 225, 230];
+  const BALLOON = [170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220];
+  const LOW_SLOW = [180, 190, 200];
+  const oneBag = () => [{ type: "fanOnGlobal", secs: 34 }, { type: "heatOff" }];
 
   const WF_TEMPLATES = [
     { name: "Vapesuvius Temp Step",
@@ -749,6 +755,29 @@
     { name: "Really On",
       desc: "Heat on at the current target, LED back to 70%.",
       actions: [{ type: "heatOn", temp: "" }, { type: "setLED", pct: 70 }] },
+
+    { group: "More sessions", name: "Quick Bag 185 °C",
+      desc: "One bag at a middle-of-the-road 185 °C. It heats up, fills a 34 s bag and turns the heat off.",
+      actions: [wfLadder([185], 5)].concat(oneBag()) },
+    { group: "More sessions", name: "Flavor Chaser",
+      desc: "Low temperatures for taste: 170 → 175 → 180 °C. This is the range where the lighter terpenes (pinene, myrcene, limonene) boil. One bag per Run.",
+      actions: [wfLadder(FLAVOR, 5)].concat(oneBag()) },
+    { group: "More sessions", name: "Even Steps (edible saver)",
+      desc: "Only the even Vapesuvius rungs, 185 / 199 / 211 / 230 °C. Per the guide's dosing tip, this leaves more behind in already-vaped bud for edibles. One bag per Run.",
+      actions: [wfLadder(EVEN_RUNGS, 5)].concat(oneBag()) },
+    { group: "More sessions", name: "Balloon Climb",
+      desc: "Eleven small 5° steps from 170 to 220 °C, in the style of the Storz & Bickel app's Balloon workflow. One bag per Run.",
+      actions: [wfLadder(BALLOON, 5)].concat(oneBag()) },
+    { group: "More sessions", name: "Hot Finisher",
+      desc: "Squeezes the last out of a used load: 215 → 220 → 225 → 230 °C. The vapor is warm up here, so a waterpipe helps. One bag per Run.",
+      actions: [wfLadder(FINISHER, 5)].concat(oneBag()) },
+    { group: "More sessions", name: "Auto Bag Session",
+      desc: "A whole Vapesuvius session with one press. At each rung you get 30 s to fit a fresh bag before it fills. The heat turns off after the 230 °C bag.",
+      actions: [wfLadder(VAPESUVIUS, 30), { type: "fanOn", secs: 34 }, { type: "heatOff" },
+        { type: "exitWhenTemp", temp: 230 }, { type: "loop" }] },
+    { group: "More sessions", name: "Low & Slow Whip",
+      desc: "A gentle session for whip use. It holds 180, 190 and 200 °C for 5 minutes each, then stops at 200 °C (the heat stays on).",
+      actions: [wfLadder(LOW_SLOW, 300), { type: "exitWhenTemp", temp: 200 }, { type: "loop" }] },
   ];
 
   let wfTplOpen = false;
@@ -761,12 +790,17 @@
 
   function renderTemplates() {
     const box = el("div", { class: "v-wf-tpls" },
-      el("p", { class: "v-hint" }, "Ready-made workflows, modelled on Project Onyx's premade set. Adding one copies it into your list below, where you can tweak it."));
-    WF_TEMPLATES.forEach((t) => box.append(el("div", { class: "v-wf-tpl" },
+      el("p", { class: "v-hint" }, "Ready-made workflows. Adding one copies it into your list below, where you can tweak it."));
+    let group = null;
+    WF_TEMPLATES.forEach((t) => {
+      const g = t.group || "From Project Onyx";
+      if (g !== group) { group = g; box.append(el("h3", { class: "v-wf-tplgroup" }, g)); }
+      box.append(el("div", { class: "v-wf-tpl" },
       el("div", { class: "v-wf-tpltext" },
         el("strong", null, t.name),
         el("span", { class: "v-wf-tpldesc" }, t.desc)),
-      el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: () => wfAddTemplate(t) }, "+ Add"))));
+      el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: () => wfAddTemplate(t) }, "+ Add")));
+    });
     return box;
   }
 
@@ -888,9 +922,12 @@
           case "setLED":
             await writeU16(LED_BRIGHT, clampPct(a.pct)); i++; break;
           case "exitWhenTemp": {
-            const cur = await readCurrentTemp();
-            if (cur != null && cur >= clampT(a.temp)) { wfSetRun("Exit — reached " + cur + " °C"); i = wf.actions.length; }
-            else i++;
+            // Current OR target: Onyx checks the target, which stays put while
+            // a bag fill briefly drags the chamber reading down.
+            const lim = clampT(a.temp), cur = await readCurrentTemp(), set = await readTargetTemp();
+            if ((cur != null && cur >= lim) || (set != null && set >= lim)) {
+              wfSetRun("Exit — reached " + lim + " °C"); i = wf.actions.length;
+            } else i++;
             break;
           }
           case "conditionalTemp": {
