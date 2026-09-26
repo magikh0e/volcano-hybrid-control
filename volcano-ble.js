@@ -687,7 +687,7 @@
   // A workflow is { id, name, actions: [ {type, ...params} ] }, saved in
   // localStorage. Action types mirror Project Onyx:
   //   heatOn {temp?}  heatOff  fanOn {secs}  fanOnGlobal {secs}  wait {secs}
-  //   setLED {pct}  exitWhenTemp {temp}  loop
+  //   setLED {pct}  exitWhenTemp {temp, by?: "target"|"chamber"}  loop
   //   conditionalTemp { def:{temp,wait}, conditions:[{ifTemp,thenSet,wait}] }
 
   const WF_TYPES = [
@@ -726,6 +726,9 @@
   const FINISHER = [215, 220, 225, 230];
   const BALLOON = [170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220];
   const LOW_SLOW = [180, 190, 200];
+  const TERP_TOUR = [169, 180, 187, 202, 215, 222, 230];   // boiling-point landmarks + 1–2 °C
+  const ODD_RUNGS = [179, 191, 205, 217];                  // Vapesuvius rungs 1 / 3 / 5 / 7
+  const EXPRESS = [185, 205, 225];
   const oneBag = () => [{ type: "fanOnGlobal", secs: 34 }, { type: "heatOff" }];
 
   const WF_TEMPLATES = [
@@ -737,7 +740,7 @@
       actions: [wfLadder(VAPESUVIUS.slice().reverse(), 5), { type: "fanOnGlobal", secs: 34 }, { type: "heatOff" }] },
     { name: "Temp Step Whip Loop",
       desc: "A hands-off full session for whip use. Holds each Vapesuvius rung for 200 s, then moves up, and stops at 230 °C (the heat stays on).",
-      actions: [wfLadder(VAPESUVIUS, 200), { type: "exitWhenTemp", temp: 230 }, { type: "loop" }] },
+      actions: [wfLadder(VAPESUVIUS, 200), { type: "exitWhenTemp", temp: 230, by: "target" }, { type: "loop" }] },
     { name: "Dosing Capsule Step",
       desc: "Four rungs sized for a dosing capsule (185 → 197 → 211 → 230 °C). One bag per Run.",
       actions: [wfLadder(CAPSULE, 5), { type: "fanOnGlobal", secs: 34 }, { type: "heatOff" }] },
@@ -774,13 +777,45 @@
     { group: "magikh0e created", name: "Auto Bag Session",
       desc: "A whole Vapesuvius session with one press. At each rung you get 30 s to fit a fresh bag before it fills. The heat turns off after the 230 °C bag.",
       actions: [wfLadder(VAPESUVIUS, 30), { type: "fanOn", secs: 34 }, { type: "heatOff" },
-        { type: "exitWhenTemp", temp: 230 }, { type: "loop" }] },
+        { type: "exitWhenTemp", temp: 230, by: "target" }, { type: "loop" }] },
     { group: "magikh0e created", name: "Low & Slow Whip",
       desc: "A gentle session for whip use. It holds 180, 190 and 200 °C for 5 minutes each, then stops at 200 °C (the heat stays on).",
-      actions: [wfLadder(LOW_SLOW, 300), { type: "exitWhenTemp", temp: 200 }, { type: "loop" }] },
+      actions: [wfLadder(LOW_SLOW, 300), { type: "exitWhenTemp", temp: 200, by: "target" }, { type: "loop" }] },
+    { group: "magikh0e created", name: "Terpene Tour",
+      desc: "Walks the landmarks in Help's boiling-point table: myrcene, limonene, CBN, linalool, borneol, CBC and geraniol (169 → 230 °C). Each rung sits 1–2 °C above the listed point, because the Volcano reads a touch low. One bag per Run.",
+      actions: [wfLadder(TERP_TOUR, 5)].concat(oneBag()) },
+    { group: "magikh0e created", name: "Odd Steps",
+      desc: "The other half of Even Steps: Vapesuvius rungs 1 / 3 / 5 / 7 (179 / 191 / 205 / 217 °C). One bag per Run.",
+      actions: [wfLadder(ODD_RUNGS, 5)].concat(oneBag()) },
+    { group: "magikh0e created", name: "Three-Bag Express",
+      desc: "A short hands-free session: 185, 205 and 225 °C, with 30 s to fit a fresh bag at each. The heat turns off after the last bag.",
+      actions: [wfLadder(EXPRESS, 30), { type: "fanOn", secs: 34 }, { type: "heatOff" },
+        { type: "exitWhenTemp", temp: 225, by: "target" }, { type: "loop" }] },
+    { group: "magikh0e created", name: "Four Bags @ 190 °C",
+      desc: "A round for sharing. It heats to 190 °C, fills four bags with 30 s to swap between each, then turns the heat off.",
+      actions: [wfLadder([190], 30), { type: "fanOn", secs: 34 },
+        { type: "wait", secs: 30 }, { type: "fanOn", secs: 34 },
+        { type: "wait", secs: 30 }, { type: "fanOn", secs: 34 },
+        { type: "wait", secs: 30 }, { type: "fanOn", secs: 34 }, { type: "heatOff" }] },
+    { group: "magikh0e created", name: "Warm-up Hold",
+      desc: "Heats to 185 °C and keeps it there for 10 minutes while you use the controls by hand, then turns the heat off.",
+      actions: [wfLadder([185], 600), { type: "heatOff" }] },
+    { group: "magikh0e created", name: "Lights-Out Bag",
+      desc: "Quick Bag with the LED off, for a dark room. It heats to 185 °C, fills one bag and turns the heat off. The LED stays off; Really On brings it back.",
+      actions: [{ type: "setLED", pct: 0 }, wfLadder([185], 5)].concat(oneBag()) },
+    { group: "magikh0e created", name: "Chamber Purge",
+      desc: "Heat off, then 20 s of air to clear leftover vapor before you empty the chamber.",
+      actions: [{ type: "heatOff" }, { type: "fanOn", secs: 20 }] },
   ];
 
   let wfTplOpen = false;
+
+  // What Exit When Temp Reached compares against. "" = unset (older saves).
+  const WF_EXIT_BY = {
+    target:  { label: "target",             short: "target" },
+    chamber: { label: "chamber",            short: "chamber" },
+    "":      { label: "target or chamber",  short: "target/chamber" },
+  };
 
   function wfAddTemplate(t) {
     workflows.push({ id: wfNewId(), name: t.name, actions: sanitizeActions(t.actions) });
@@ -830,7 +865,7 @@
       case "fanOn": case "fanOnGlobal": return { type, secs: 41 };
       case "wait": return { type, secs: 30 };
       case "setLED": return { type, pct: 70 };
-      case "exitWhenTemp": return { type, temp: 200 };
+      case "exitWhenTemp": return { type, temp: 200, by: "target" };
       case "conditionalTemp": return { type, def: { temp: 179, wait: 30 }, conditions: [{ ifTemp: 179, thenSet: 185, wait: 30 }] };
       default: return { type };  // heatOff, loop
     }
@@ -844,7 +879,7 @@
       case "fanOnGlobal": return "Fan " + (a.secs || 0) + "s (bg)";
       case "wait": return "Wait " + (a.secs || 0) + "s";
       case "setLED": return "LED " + (a.pct || 0) + "%";
-      case "exitWhenTemp": return "Exit when ≥ " + (a.temp || 0) + " °C";
+      case "exitWhenTemp": return "Exit when " + (WF_EXIT_BY[a.by] || WF_EXIT_BY[""]).short + " ≥ " + (a.temp || 0) + " °C";
       case "conditionalTemp": return "Conditional temp set";
       case "loop": return "Loop from beginning";
       default: return a.type;
@@ -922,9 +957,12 @@
           case "setLED":
             await writeU16(LED_BRIGHT, clampPct(a.pct)); i++; break;
           case "exitWhenTemp": {
-            // Current OR target: Onyx checks the target, which stays put while
-            // a bag fill briefly drags the chamber reading down.
-            const lim = clampT(a.temp), cur = await readCurrentTemp(), set = await readTargetTemp();
+            // "target" (Onyx's rule) ignores the chamber, so a hot start or a
+            // bag fill dragging the reading down can't trip or miss the exit.
+            // "chamber" waits on the real temperature. Unset (older saves) = either.
+            const lim = clampT(a.temp);
+            const cur = a.by === "target" ? null : await readCurrentTemp();
+            const set = a.by === "chamber" ? null : await readTargetTemp();
             if ((cur != null && cur >= lim) || (set != null && set >= lim)) {
               wfSetRun("Exit — reached " + lim + " °C"); i = wf.actions.length;
             } else i++;
@@ -1054,7 +1092,11 @@
         return el("span", { class: "v-wf-params" },
           wfNum(a.pct, (e) => { a.pct = clampPct(e.target.value); save(); }, { min: 0, max: 100 }), el("span", { class: "v-unit" }, "%"));
       case "exitWhenTemp":
-        return el("span", { class: "v-wf-params" }, el("span", { class: "v-wf-plabel" }, "when ≥"),
+        return el("span", { class: "v-wf-params" }, el("span", { class: "v-wf-plabel" }, "when"),
+          el("select", { class: "v-wf-type", disabled: wfRunning, "aria-label": "Compare against",
+            onChange: (e) => { if (e.target.value) a.by = e.target.value; else delete a.by; save(); } },
+            Object.keys(WF_EXIT_BY).map((k) => el("option", { value: k, selected: (a.by || "") === k }, WF_EXIT_BY[k].label))),
+          el("span", { class: "v-wf-plabel" }, "≥"),
           wfNum(a.temp, (e) => { a.temp = clampT(e.target.value); save(); }, { min: MIN_T, max: MAX_T }), el("span", { class: "v-unit" }, "°C"));
       case "conditionalTemp":
         return renderConditional(a);
@@ -1123,7 +1165,8 @@
         case "heatOn": return { type: "heatOn", temp: (a.temp === "" || a.temp == null) ? "" : clampT(a.temp) };
         case "fanOn": case "fanOnGlobal": case "wait": return { type: a.type, secs: clampSecs(a.secs) };
         case "setLED": return { type: "setLED", pct: clampPct(a.pct) };
-        case "exitWhenTemp": return { type: "exitWhenTemp", temp: clampT(a.temp) };
+        case "exitWhenTemp": return Object.assign({ type: "exitWhenTemp", temp: clampT(a.temp) },
+          a.by === "target" || a.by === "chamber" ? { by: a.by } : {});
         case "conditionalTemp": return {
           type: "conditionalTemp",
           def: { temp: clampT(a.def && a.def.temp), wait: clampSecs(a.def && a.def.wait) },

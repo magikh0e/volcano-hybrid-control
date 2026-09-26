@@ -74,7 +74,7 @@
   </details>
   <details>
     <summary>What are Workflows, and what does each action do?</summary>
-    <p>A small editor for scripting your own sequences. Action types: <strong>Heat On</strong> (optionally set a target), <strong>Heat Off</strong>, <strong>Fan On</strong> for N seconds (or "background", which doesn't block the next step), <strong>Wait</strong>, <strong>Set LED</strong>, <strong>Conditional Temp Set</strong>, <strong>Exit When Temp Reached</strong>, and <strong>Loop From Beginning</strong>. Conditional Temp Set is a temperature ladder stored as data. It reads the current target, matches it to a rung and moves up to the next one. It then waits for the chamber to reach that temperature before its hold timer starts. Save as many workflows as you like and run them over the live connection. The action model is inspired by <a href="https://github.com/ImACoderImACoderImACoder/onyx" rel="noopener">Project Onyx</a>.</p>
+    <p>A small editor for scripting your own sequences. Action types: <strong>Heat On</strong> (optionally set a target), <strong>Heat Off</strong>, <strong>Fan On</strong> for N seconds (or "background", which doesn't block the next step), <strong>Wait</strong>, <strong>Set LED</strong>, <strong>Conditional Temp Set</strong>, <strong>Exit When Temp Reached</strong>, and <strong>Loop From Beginning</strong>. Conditional Temp Set is a temperature ladder stored as data. It reads the current target, matches it to a rung and moves up to the next one. It then waits for the chamber to reach that temperature before its hold timer starts. Exit When Temp Reached can compare against the <strong>target</strong> (as Project Onyx does), the <strong>chamber</strong> reading, or either one. Use target for looping ladders, so a hot start or a bag fill can't throw it off. Use chamber to wait until the chamber really gets there. Save as many workflows as you like and run them over the live connection. The action model is inspired by <a href="https://github.com/ImACoderImACoderImACoder/onyx" rel="noopener">Project Onyx</a>.</p>
   </details>
   <details>
     <summary>Are there ready-made workflows?</summary>
@@ -95,6 +95,13 @@
       <li><strong>Hot Finisher</strong>: 215 &rarr; 230&nbsp;&deg;C for a used load.</li>
       <li><strong>Auto Bag Session</strong>: the full Vapesuvius ladder with one press. You get 30&nbsp;s at each rung to fit a fresh bag, and the heat turns off after the last one.</li>
       <li><strong>Low &amp; Slow Whip</strong>: holds 180 / 190 / 200&nbsp;&deg;C for 5&nbsp;minutes each.</li>
+      <li><strong>Terpene Tour</strong>: the boiling-point landmarks from 169 to 230&nbsp;&deg;C, one bag per Run.</li>
+      <li><strong>Odd Steps</strong>: Vapesuvius rungs 1 / 3 / 5 / 7, the other half of Even Steps.</li>
+      <li><strong>Three-Bag Express</strong>: 185 / 205 / 225&nbsp;&deg;C hands-free, with 30&nbsp;s to fit each bag.</li>
+      <li><strong>Four Bags @ 190&nbsp;&deg;C</strong>: four bags at one temperature, with 30&nbsp;s to swap between each.</li>
+      <li><strong>Warm-up Hold</strong>: holds 185&nbsp;&deg;C for 10&nbsp;minutes, then turns the heat off.</li>
+      <li><strong>Lights-Out Bag</strong>: Quick Bag with the LED off.</li>
+      <li><strong>Chamber Purge</strong>: heat off, then 20&nbsp;s of air to clear the chamber.</li>
     </ul>
     <p>Ladder templates carry on from the device's current target. If it's already on one of their rungs (say you tapped a preset), they continue from the next rung. To start at the bottom, set any temperature that isn't on the ladder first. A template you add is an ordinary workflow, so you can edit it however you like.</p>
   </details>
