@@ -5,7 +5,7 @@
 // only the UI is cached, not the BLE session). Bump CACHE on any asset change
 // to invalidate the old shell.
 
-const CACHE = "volcano-hybrid-control-v28";
+const CACHE = "volcano-hybrid-control-v30";
 const ASSETS = [
   "./",
   "./index.html",
@@ -24,7 +24,10 @@ const ASSETS = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())
+    // cache: "reload" skips the browser's HTTP cache, so a CACHE bump can't
+    // lock a stale copy of an asset into the new cache.
+    caches.open(CACHE).then((c) => c.addAll(ASSETS.map((u) => new Request(u, { cache: "reload" }))))
+      .then(() => self.skipWaiting())
   );
 });
 

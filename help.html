@@ -74,42 +74,47 @@
   </details>
   <details>
     <summary>What are Workflows, and what does each action do?</summary>
-    <p>A small editor for scripting your own sequences. Action types: <strong>Heat On</strong> (optionally set a target), <strong>Heat Off</strong>, <strong>Fan On</strong> for N seconds (or "background", which doesn't block the next step), <strong>Wait</strong>, <strong>Set LED</strong>, <strong>Conditional Temp Set</strong>, <strong>Exit When Temp Reached</strong>, and <strong>Loop From Beginning</strong>. Conditional Temp Set is a temperature ladder stored as data. It reads the current target, matches it to a rung and moves up to the next one. It then waits for the chamber to reach that temperature before its hold timer starts. Exit When Temp Reached can compare against the <strong>target</strong> (as Project Onyx does), the <strong>chamber</strong> reading, or either one. Use target for looping ladders, so a hot start or a bag fill can't throw it off. Use chamber to wait until the chamber really gets there. Save as many workflows as you like and run them over the live connection. The action model is inspired by <a href="https://github.com/ImACoderImACoderImACoder/onyx" rel="noopener">Project Onyx</a>.</p>
+    <p>A small editor for scripting your own sequences. Action types: <strong>Heat On</strong> (optionally set a target), <strong>Heat Off</strong>, <strong>Fan On</strong> for N seconds (or "background", which doesn't block the next step), <strong>Wait</strong>, <strong>Set LED</strong>, <strong>Conditional Temp Set</strong>, <strong>Exit When Temp Reached</strong>, and <strong>Loop From Beginning</strong>. Conditional Temp Set is a temperature ladder stored as data. It reads the current target, matches it to a rung and moves up to the next one. It then waits for the chamber to get there, heating up or cooling down (if the chamber is well above it), before its hold timer starts. Exit When Temp Reached can compare against the <strong>target</strong> (as Project Onyx does), the <strong>chamber</strong> reading, or either one. Use target for looping ladders, so a hot start or a bag fill can't throw it off. Use chamber to wait until the chamber really gets there. Save as many workflows as you like and run them over the live connection. The action model is inspired by <a href="https://github.com/ImACoderImACoderImACoder/onyx" rel="noopener">Project Onyx</a>.</p>
   </details>
   <details>
     <summary>Are there ready-made workflows?</summary>
-    <p>Yes. On the Workflows tab, click <strong>&#128203; Templates</strong> and <strong>+ Add</strong> any of them to your list. They're modelled on Project Onyx's premade set, with step temperatures from Vapesuvius' chart:</p>
+    <p>Yes. On the Workflows tab, click <strong>&#128203; Templates</strong> and add any of them to your list. Every template runs start to finish on one press. It always starts at its first rung, and it turns the heat off at the end.</p>
+    <p>Temperature ladders come in two versions, each with its own button:</p>
     <ul>
-      <li><strong>Vapesuvius Temp Step</strong> (and <strong>&#9194;</strong> reverse): each Run moves up one rung, 179 &rarr; 230&nbsp;&deg;C, then fills a 34&nbsp;s bag and turns the heat off.</li>
-      <li><strong>Temp Step Whip Loop</strong>: a full session. It holds each rung for 200&nbsp;s and stops at 230&nbsp;&deg;C.</li>
-      <li><strong>Dosing Capsule Step</strong> (and reverse): four rungs, 185 / 197 / 211 / 230&nbsp;&deg;C, one bag per Run.</li>
-      <li><strong>Developer's Special</strong>: 180 &rarr; 200&nbsp;&deg;C in 5&deg; rungs, with a priming puff and short bursts before each bag.</li>
+      <li><strong>Bags</strong> (<strong>+ 7 bags</strong> and so on): at each rung it heats or cools until the chamber is there. It then gives you 30&nbsp;s to fit a fresh bag and fills it (34&nbsp;s). The button, the <strong>&#128717; bags</strong> badge and the name of the copy you add all show how many bags you'll need.</li>
+      <li><strong>Whip</strong> (<strong>+ Whip</strong>): it holds each rung for a few minutes, shown on the <strong>&#128168; whip</strong> badge, then moves to the next.</li>
+    </ul>
+    <p>From Project Onyx's premade set, with step temperatures from Vapesuvius' chart:</p>
+    <ul>
+      <li><strong>Vapesuvius Temp Step</strong>: 179 &rarr; 230&nbsp;&deg;C in 8 rungs (whip holds 200&nbsp;s each).</li>
+      <li><strong>Vapesuvius Temp Step &#9194;</strong>: the same ladder from the top down. Each step down waits for the chamber to cool.</li>
+      <li><strong>Dosing Capsule Step</strong> (and &#9194; reverse): 185 / 197 / 211 / 230&nbsp;&deg;C.</li>
+      <li><strong>Developer's Special</strong> (bags only): 180 &rarr; 200&nbsp;&deg;C in 5&deg; rungs, with a priming puff and three short bursts before each bag.</li>
       <li><strong>Really Off</strong> / <strong>Really On</strong>: heat and LED together.</li>
     </ul>
-    <p>A second group, <strong>magikh0e created</strong>, uses the boiling-point guide below:</p>
+    <p><strong>magikh0e created</strong>, using the boiling-point guide below. Ladders (bags or whip):</p>
     <ul>
-      <li><strong>Quick Bag 185&nbsp;&deg;C</strong>: one bag, then the heat turns off.</li>
+      <li><strong>Terpene Tour</strong>: the boiling-point landmarks, 169 &rarr; 230&nbsp;&deg;C in 7 rungs.</li>
       <li><strong>Flavor Chaser</strong>: 170 / 175 / 180&nbsp;&deg;C, the lighter-terpene range.</li>
       <li><strong>Even Steps (edible saver)</strong>: the even Vapesuvius rungs only, 185 / 199 / 211 / 230&nbsp;&deg;C.</li>
-      <li><strong>Balloon Climb</strong>: 170 &rarr; 220&nbsp;&deg;C in eleven 5&deg; steps.</li>
-      <li><strong>Hot Finisher</strong>: 215 &rarr; 230&nbsp;&deg;C for a used load.</li>
-      <li><strong>Auto Bag Session</strong>: the full Vapesuvius ladder with one press. You get 30&nbsp;s at each rung to fit a fresh bag, and the heat turns off after the last one.</li>
-      <li><strong>Low &amp; Slow Whip</strong>: holds 180 / 190 / 200&nbsp;&deg;C for 5&nbsp;minutes each.</li>
-      <li><strong>Terpene Tour</strong>: the boiling-point landmarks from 169 to 230&nbsp;&deg;C, one bag per Run.</li>
       <li><strong>Odd Steps</strong>: Vapesuvius rungs 1 / 3 / 5 / 7, the other half of Even Steps.</li>
-      <li><strong>Three-Bag Express</strong>: 185 / 205 / 225&nbsp;&deg;C hands-free, with 30&nbsp;s to fit each bag.</li>
+      <li><strong>Balloon Climb</strong>: 170 &rarr; 220&nbsp;&deg;C in eleven 5&deg; steps (whip holds 2&nbsp;min each).</li>
+      <li><strong>Express 185 / 205 / 225</strong>: a short session in three big steps.</li>
+      <li><strong>Low &amp; Slow</strong>: 180 / 190 / 200&nbsp;&deg;C (whip holds 5&nbsp;min each).</li>
+      <li><strong>Hot Finisher</strong>: 215 &rarr; 230&nbsp;&deg;C, for a used load.</li>
+    </ul>
+    <p>And single-purpose ones:</p>
+    <ul>
+      <li><strong>Quick Bag 185&nbsp;&deg;C</strong>, <strong>Microdose Bag</strong> (175&nbsp;&deg;C, 20&nbsp;s fill), <strong>Half Bag @ 190&nbsp;&deg;C</strong> (17&nbsp;s) and <strong>Lights-Out Bag</strong> (LED off): one bag each.</li>
       <li><strong>Four Bags @ 190&nbsp;&deg;C</strong>: four bags at one temperature, with 30&nbsp;s to swap between each.</li>
-      <li><strong>Warm-up Hold</strong>: holds 185&nbsp;&deg;C for 10&nbsp;minutes, then turns the heat off.</li>
-      <li><strong>Lights-Out Bag</strong>: Quick Bag with the LED off.</li>
-      <li><strong>Chamber Purge</strong>: heat off, then 20&nbsp;s of air to clear the chamber.</li>
-      <li><strong>Microdose Bag</strong> / <strong>Half Bag @ 190&nbsp;&deg;C</strong>: smaller fills (20&nbsp;s and 17&nbsp;s) for a lighter bag.</li>
       <li><strong>Layered Bag</strong>: half a bag at 180&nbsp;&deg;C, then the rest at 200&nbsp;&deg;C, in one bag.</li>
-      <li><strong>Sampler</strong>: half-bags at 180 / 195 / 210&nbsp;&deg;C, hands-free, to compare a load across the range.</li>
-      <li><strong>Whip @ 195&nbsp;&deg;C</strong>: holds 195&nbsp;&deg;C for 15&nbsp;minutes, then turns the heat off.</li>
+      <li><strong>Sampler</strong>: three half-bags at 180 / 195 / 210&nbsp;&deg;C, to compare a load across the range.</li>
+      <li><strong>Whip @ 195&nbsp;&deg;C</strong>: holds 195&nbsp;&deg;C for 15&nbsp;minutes. <strong>Warm-up Hold</strong>: holds 185&nbsp;&deg;C for 10&nbsp;minutes while you use the controls by hand.</li>
       <li><strong>Ready Signal</strong>: heats to 185&nbsp;&deg;C and blinks the LED three times when it's ready.</li>
+      <li><strong>Chamber Purge</strong>: heat off, then 20&nbsp;s of air to clear the chamber.</li>
       <li><strong>Clean Cycle (empty chamber)</strong>: 5&nbsp;minutes at 230&nbsp;&deg;C and 60&nbsp;s of air to burn off residue. Only run it with the chamber empty.</li>
     </ul>
-    <p>Ladder templates carry on from the device's current target. If it's already on one of their rungs (say you tapped a preset), they continue from the next rung. To start at the bottom, set any temperature that isn't on the ladder first. A template you add is an ordinary workflow, so you can edit it however you like.</p>
+    <p>A template you add is an ordinary workflow, so you can edit it however you like. Starting a ladder with the chamber still hot from an earlier session means it waits for the chamber to cool to the first rung.</p>
   </details>
   <details>
     <summary>Can I share a workflow with someone?</summary>

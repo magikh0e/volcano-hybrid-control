@@ -233,6 +233,12 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-wf-tpltext { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
 .v-wf-tpldesc { opacity: 0.75; font-size: 0.85rem; }
 .v-wf-tpl .v-btn { flex: none; }
+.v-wf-tplbtns { display: flex; flex-direction: column; gap: 0.3rem; flex: none; }
+.v-wf-tplbtns .v-btn { white-space: nowrap; }
+.v-wf-tplbadges { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.v-wf-tplbadges:empty { display: none; }
+.v-wf-badge { font-size: 0.75rem; padding: 0.05rem 0.45rem; border: 1px solid var(--accent, #e08a3c); border-radius: 999px; color: var(--accent, #e08a3c); white-space: nowrap; }
+.v-wf-tplmodes { font-style: italic; }
 .v-wf-tplgroup { margin: 0.8rem 0 0.2rem; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent, #e08a3c); }
 
 /* ---- help / FAQ ---- */

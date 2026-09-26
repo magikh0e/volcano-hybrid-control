@@ -703,11 +703,13 @@
   ];
 
   const WF_HEAT_TIMEOUT_MS = 15 * 60 * 1000;
+  const WF_COOL_TIMEOUT_MS = 30 * 60 * 1000;
+  const WF_COOL_TOL = 3;   // °C above a rung that still counts as "at" it (heat-up overshoot)
 
   // ---- templates ------------------------------------------------------------
   // Ready-made workflows, modelled on Project Onyx's premade set (step temps
-  // from Vapesuvius' chart). "+ Add" copies one into your own list, where it's
-  // an ordinary, editable workflow.
+  // from Vapesuvius' chart). Adding one copies it into your own list, where
+  // it's an ordinary, editable workflow.
 
   // A conditionalTemp that walks `temps` in order: from rung i go to rung i+1;
   // from anywhere else start at temps[0]. Reverse the array to step down.
@@ -729,33 +731,65 @@
   const TERP_TOUR = [169, 180, 187, 202, 215, 222, 230];   // boiling-point landmarks + 1–2 °C
   const ODD_RUNGS = [179, 191, 205, 217];                  // Vapesuvius rungs 1 / 3 / 5 / 7
   const EXPRESS = [185, 205, 225];
-  const oneBag = () => [{ type: "fanOnGlobal", secs: 34 }, { type: "heatOff" }];
+  const WF_BAG_FIT = 30;     // s at each rung to fit a fresh bag before it fills
+  const WF_BAG_FILL = 34;    // s for a full bag
+  const WF_WHIP_HOLD = 180;  // s per rung in whip mode, unless a template sets whipSecs
+  const fill = (secs) => ({ type: "fanOn", secs: secs || WF_BAG_FILL });   // blocks until the bag is full
   // n on/off LED flashes, one second each.
   const wfBlink = (n) => Array.from({ length: n }, () => [
     { type: "setLED", pct: 100 }, { type: "wait", secs: 1 }, { type: "setLED", pct: 0 }, { type: "wait", secs: 1 },
   ]).flat();
 
+  // Ladder templates ({temps}) run hands-free, always from the first rung, in
+  // one of two modes, and turn the heat off at the end:
+  //   bag  - at each rung: heat/cool until reached, WF_BAG_FIT s to fit a bag,
+  //          then the fill (default one full bag).
+  //   whip - at each rung: heat/cool until reached, then hold whipSecs.
+  // Other templates are a fixed {actions} list.
+  const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
+  // How many bags a template (in a mode) fills: a bag-mode ladder fills one
+  // per rung; fixed templates declare {bags}. Shown on the row, the button and
+  // the added workflow's name, so multi-bag runs are obvious up front.
+  function tplBags(t, mode) { return t.temps ? (mode === "bag" ? t.temps.length : 0) : (t.bags || 0); }
+  const WF_MODES = {
+    bag:  { btn: (t) => "+ " + plural(tplBags(t, "bag"), "bag"), suffix: (t) => " (" + plural(tplBags(t, "bag"), "bag") + ")" },
+    whip: { btn: () => "+ Whip", suffix: () => " (whip)" },
+  };
+  function tplBadges(t) {
+    return tplModes(t).map((m) => {
+      if (m === "whip") return "💨 whip · " + plural(t.temps.length, "rung") + " × " + fmtDur(t.whipSecs || WF_WHIP_HOLD);
+      const n = tplBags(t, m);
+      return n ? "🛍 " + plural(n, "bag") : null;
+    }).filter(Boolean);
+  }
+  function tplModes(t) { return t.temps ? (t.modes || ["bag", "whip"]) : [null]; }
+  function tplActions(t, mode) {
+    if (!t.temps) return t.actions;
+    const rungs = mode === "whip"
+      ? t.temps.map((x) => wfLadder([x], t.whipSecs || WF_WHIP_HOLD))
+      : t.temps.flatMap((x) => [wfLadder([x], WF_BAG_FIT)].concat(t.fill || [fill()]));
+    return (t.pre || []).concat(rungs, [{ type: "heatOff" }], t.post || []);
+  }
+  function tplModeNote(t) {
+    if (!t.temps) return null;
+    return tplModes(t).map((m) => m === "whip"
+      ? "Whip: holds each rung " + fmtDur(t.whipSecs || WF_WHIP_HOLD) + "."
+      : "Bags: " + WF_BAG_FIT + " s to fit a fresh bag at each rung, then it fills.").join(" ");
+  }
+
   const WF_TEMPLATES = [
-    { name: "Vapesuvius Temp Step",
-      desc: "One bag per Run. Each Run climbs to the next rung (179 → 185 → 191 → 199 → 205 → 211 → 217 → 230 °C), fills a 34 s bag, then turns the heat off.",
-      actions: [wfLadder(VAPESUVIUS, 5), { type: "fanOnGlobal", secs: 34 }, { type: "heatOff" }] },
-    { name: "Vapesuvius Temp Step ⏪",
-      desc: "The same ladder in reverse. Start hot and step down one rung per Run, filling a bag each time.",
-      actions: [wfLadder(VAPESUVIUS.slice().reverse(), 5), { type: "fanOnGlobal", secs: 34 }, { type: "heatOff" }] },
-    { name: "Temp Step Whip Loop",
-      desc: "A hands-off full session for whip use. Holds each Vapesuvius rung for 200 s, then moves up, and stops at 230 °C (the heat stays on).",
-      actions: [wfLadder(VAPESUVIUS, 200), { type: "exitWhenTemp", temp: 230, by: "target" }, { type: "loop" }] },
-    { name: "Dosing Capsule Step",
-      desc: "Four rungs sized for a dosing capsule (185 → 197 → 211 → 230 °C). One bag per Run.",
-      actions: [wfLadder(CAPSULE, 5), { type: "fanOnGlobal", secs: 34 }, { type: "heatOff" }] },
-    { name: "Dosing Capsule Step ⏪",
-      desc: "The capsule ladder in reverse, from 230 °C down to 185 °C.",
-      actions: [wfLadder(CAPSULE.slice().reverse(), 5), { type: "fanOnGlobal", secs: 34 }, { type: "heatOff" }] },
-    { name: "Developer's Special",
-      desc: "Onyx's signature. Steps 180 → 200 °C in 5° rungs. At each one it gives a 4 s priming puff and three short bursts, then fills a bag and dims the LED.",
-      actions: [{ type: "setLED", pct: 70 }, wfLadder(DEV_SPECIAL, 0),
-        { type: "fanOn", secs: 4 }, { type: "fanOn", secs: 1 }, { type: "fanOn", secs: 1 }, { type: "fanOn", secs: 1 },
-        { type: "fanOnGlobal", secs: 34 }, { type: "heatOff" }, { type: "setLED", pct: 0 }] },
+    { name: "Vapesuvius Temp Step", temps: VAPESUVIUS, whipSecs: 200,
+      desc: "The full-spectrum Vapesuvius ladder: 179 → 185 → 191 → 199 → 205 → 211 → 217 → 230 °C." },
+    { name: "Vapesuvius Temp Step ⏪", temps: VAPESUVIUS.slice().reverse(), whipSecs: 200,
+      desc: "The same ladder from the top down, 230 → 179 °C. Each step down waits for the chamber to cool to the next rung." },
+    { name: "Dosing Capsule Step", temps: CAPSULE, whipSecs: 200,
+      desc: "Four rungs sized for a dosing capsule: 185 → 197 → 211 → 230 °C." },
+    { name: "Dosing Capsule Step ⏪", temps: CAPSULE.slice().reverse(), whipSecs: 200,
+      desc: "The capsule ladder from the top down, 230 → 185 °C, cooling between rungs." },
+    { name: "Developer's Special", temps: DEV_SPECIAL, modes: ["bag"],
+      pre: [{ type: "setLED", pct: 70 }], post: [{ type: "setLED", pct: 0 }],
+      fill: [fill(4), fill(1), fill(1), fill(1), fill()],
+      desc: "Onyx's signature. It steps 180 → 200 °C in 5° rungs. At each one it gives a 4 s priming puff and three short bursts, then fills the bag. The LED dims at the end." },
     { name: "Really Off",
       desc: "Heat off and LED off. It's dark and quiet.",
       actions: [{ type: "heatOff" }, { type: "setLED", pct: 0 }] },
@@ -763,77 +797,61 @@
       desc: "Heat on at the current target, LED back to 70%.",
       actions: [{ type: "heatOn", temp: "" }, { type: "setLED", pct: 70 }] },
 
+    { group: "magikh0e created", name: "Terpene Tour", temps: TERP_TOUR,
+      desc: "Walks the landmarks in Help's boiling-point table: myrcene, limonene, CBN, linalool, borneol, CBC and geraniol (169 → 230 °C). Each rung sits 1–2 °C above the listed point, because the Volcano reads a touch low." },
+    { group: "magikh0e created", name: "Flavor Chaser", temps: FLAVOR,
+      desc: "Low temperatures for taste: 170 → 175 → 180 °C. This is the range where the lighter terpenes (pinene, myrcene, limonene) boil." },
+    { group: "magikh0e created", name: "Even Steps (edible saver)", temps: EVEN_RUNGS,
+      desc: "Only the even Vapesuvius rungs, 185 / 199 / 211 / 230 °C. Per the guide's dosing tip, this leaves more behind in already-vaped bud for edibles." },
+    { group: "magikh0e created", name: "Odd Steps", temps: ODD_RUNGS,
+      desc: "The other half of Even Steps: Vapesuvius rungs 1 / 3 / 5 / 7 (179 / 191 / 205 / 217 °C)." },
+    { group: "magikh0e created", name: "Balloon Climb", temps: BALLOON, whipSecs: 120,
+      desc: "Eleven small 5° steps from 170 to 220 °C, in the style of the Storz & Bickel app's Balloon workflow." },
+    { group: "magikh0e created", name: "Express 185 / 205 / 225", temps: EXPRESS,
+      desc: "A short session in three big steps." },
+    { group: "magikh0e created", name: "Low & Slow", temps: LOW_SLOW, whipSecs: 300,
+      desc: "A gentle session in three steps: 180, 190 and 200 °C." },
+    { group: "magikh0e created", name: "Hot Finisher", temps: FINISHER,
+      desc: "Squeezes the last out of a used load: 215 → 220 → 225 → 230 °C. The vapor is warm up here, so a waterpipe helps." },
     { group: "magikh0e created", name: "Quick Bag 185 °C",
       desc: "One bag at a middle-of-the-road 185 °C. It heats up, fills a 34 s bag and turns the heat off.",
-      actions: [wfLadder([185], 5)].concat(oneBag()) },
-    { group: "magikh0e created", name: "Flavor Chaser",
-      desc: "Low temperatures for taste: 170 → 175 → 180 °C. This is the range where the lighter terpenes (pinene, myrcene, limonene) boil. One bag per Run.",
-      actions: [wfLadder(FLAVOR, 5)].concat(oneBag()) },
-    { group: "magikh0e created", name: "Even Steps (edible saver)",
-      desc: "Only the even Vapesuvius rungs, 185 / 199 / 211 / 230 °C. Per the guide's dosing tip, this leaves more behind in already-vaped bud for edibles. One bag per Run.",
-      actions: [wfLadder(EVEN_RUNGS, 5)].concat(oneBag()) },
-    { group: "magikh0e created", name: "Balloon Climb",
-      desc: "Eleven small 5° steps from 170 to 220 °C, in the style of the Storz & Bickel app's Balloon workflow. One bag per Run.",
-      actions: [wfLadder(BALLOON, 5)].concat(oneBag()) },
-    { group: "magikh0e created", name: "Hot Finisher",
-      desc: "Squeezes the last out of a used load: 215 → 220 → 225 → 230 °C. The vapor is warm up here, so a waterpipe helps. One bag per Run.",
-      actions: [wfLadder(FINISHER, 5)].concat(oneBag()) },
-    { group: "magikh0e created", name: "Auto Bag Session",
-      desc: "A whole Vapesuvius session with one press. At each rung you get 30 s to fit a fresh bag before it fills. The heat turns off after the 230 °C bag.",
-      actions: [wfLadder(VAPESUVIUS, 30), { type: "fanOn", secs: 34 }, { type: "heatOff" },
-        { type: "exitWhenTemp", temp: 230, by: "target" }, { type: "loop" }] },
-    { group: "magikh0e created", name: "Low & Slow Whip",
-      desc: "A gentle session for whip use. It holds 180, 190 and 200 °C for 5 minutes each, then stops at 200 °C (the heat stays on).",
-      actions: [wfLadder(LOW_SLOW, 300), { type: "exitWhenTemp", temp: 200, by: "target" }, { type: "loop" }] },
-    { group: "magikh0e created", name: "Terpene Tour",
-      desc: "Walks the landmarks in Help's boiling-point table: myrcene, limonene, CBN, linalool, borneol, CBC and geraniol (169 → 230 °C). Each rung sits 1–2 °C above the listed point, because the Volcano reads a touch low. One bag per Run.",
-      actions: [wfLadder(TERP_TOUR, 5)].concat(oneBag()) },
-    { group: "magikh0e created", name: "Odd Steps",
-      desc: "The other half of Even Steps: Vapesuvius rungs 1 / 3 / 5 / 7 (179 / 191 / 205 / 217 °C). One bag per Run.",
-      actions: [wfLadder(ODD_RUNGS, 5)].concat(oneBag()) },
-    { group: "magikh0e created", name: "Three-Bag Express",
-      desc: "A short hands-free session: 185, 205 and 225 °C, with 30 s to fit a fresh bag at each. The heat turns off after the last bag.",
-      actions: [wfLadder(EXPRESS, 30), { type: "fanOn", secs: 34 }, { type: "heatOff" },
-        { type: "exitWhenTemp", temp: 225, by: "target" }, { type: "loop" }] },
-    { group: "magikh0e created", name: "Four Bags @ 190 °C",
-      desc: "A round for sharing. It heats to 190 °C, fills four bags with 30 s to swap between each, then turns the heat off.",
-      actions: [wfLadder([190], 30), { type: "fanOn", secs: 34 },
-        { type: "wait", secs: 30 }, { type: "fanOn", secs: 34 },
-        { type: "wait", secs: 30 }, { type: "fanOn", secs: 34 },
-        { type: "wait", secs: 30 }, { type: "fanOn", secs: 34 }, { type: "heatOff" }] },
-    { group: "magikh0e created", name: "Warm-up Hold",
-      desc: "Heats to 185 °C and keeps it there for 10 minutes while you use the controls by hand, then turns the heat off.",
-      actions: [wfLadder([185], 600), { type: "heatOff" }] },
-    { group: "magikh0e created", name: "Lights-Out Bag",
-      desc: "Quick Bag with the LED off, for a dark room. It heats to 185 °C, fills one bag and turns the heat off. The LED stays off; Really On brings it back.",
-      actions: [{ type: "setLED", pct: 0 }, wfLadder([185], 5)].concat(oneBag()) },
-    { group: "magikh0e created", name: "Chamber Purge",
-      desc: "Heat off, then 20 s of air to clear leftover vapor before you empty the chamber.",
-      actions: [{ type: "heatOff" }, { type: "fanOn", secs: 20 }] },
+      bags: 1, actions: [wfLadder([185], 5), fill(), { type: "heatOff" }] },
     { group: "magikh0e created", name: "Microdose Bag",
       desc: "A small, light bag: 175 °C and a 20 s fill (about half the usual), then the heat turns off.",
-      actions: [wfLadder([175], 5), { type: "fanOnGlobal", secs: 20 }, { type: "heatOff" }] },
+      bags: 1, actions: [wfLadder([175], 5), fill(20), { type: "heatOff" }] },
     { group: "magikh0e created", name: "Half Bag @ 190 °C",
       desc: "A 17 s half-bag at 190 °C, for a top-up without a full bag. Then the heat turns off.",
-      actions: [wfLadder([190], 5), { type: "fanOnGlobal", secs: 17 }, { type: "heatOff" }] },
+      bags: 1, actions: [wfLadder([190], 5), fill(17), { type: "heatOff" }] },
+    { group: "magikh0e created", name: "Lights-Out Bag",
+      desc: "Quick Bag with the LED off, for a dark room. It heats to 185 °C, fills one bag and turns the heat off. The LED stays off; Really On brings it back.",
+      bags: 1, actions: [{ type: "setLED", pct: 0 }, wfLadder([185], 5), fill(), { type: "heatOff" }] },
+    { group: "magikh0e created", name: "Four Bags @ 190 °C",
+      desc: "A round for sharing. It heats to 190 °C, fills four bags with 30 s to swap between each, then turns the heat off.",
+      bags: 4, actions: [wfLadder([190], WF_BAG_FIT), fill(),
+        { type: "wait", secs: WF_BAG_FIT }, fill(),
+        { type: "wait", secs: WF_BAG_FIT }, fill(),
+        { type: "wait", secs: WF_BAG_FIT }, fill(), { type: "heatOff" }] },
     { group: "magikh0e created", name: "Layered Bag",
       desc: "Two temperatures in one bag. It fills half at 180 °C, heats to 200 °C and fills the rest. You get 15 s to fit the bag before it starts. Keep it on while it reheats.",
-      actions: [wfLadder([180], 15), { type: "fanOn", secs: 17 },
-        wfLadder([200], 0), { type: "fanOn", secs: 17 }, { type: "heatOff" }] },
+      bags: 1, actions: [wfLadder([180], 15), fill(17), wfLadder([200], 0), fill(17), { type: "heatOff" }] },
     { group: "magikh0e created", name: "Sampler",
       desc: "Three half-bags at 180, 195 and 210 °C, to compare how a load tastes across the range. Hands-free, with 30 s to fit each bag.",
-      actions: [wfLadder([180], 30), { type: "fanOn", secs: 17 },
-        wfLadder([195], 30), { type: "fanOn", secs: 17 },
-        wfLadder([210], 30), { type: "fanOn", secs: 17 }, { type: "heatOff" }] },
+      bags: 3, actions: [180, 195, 210].flatMap((x) => [wfLadder([x], WF_BAG_FIT), fill(17)]).concat([{ type: "heatOff" }]) },
     { group: "magikh0e created", name: "Whip @ 195 °C",
       desc: "Holds 195 °C for 15 minutes of whip use, then turns the heat off, so a session can't run on forever.",
       actions: [wfLadder([195], 900), { type: "heatOff" }] },
+    { group: "magikh0e created", name: "Warm-up Hold",
+      desc: "Heats to 185 °C and keeps it there for 10 minutes while you use the controls by hand, then turns the heat off.",
+      actions: [wfLadder([185], 600), { type: "heatOff" }] },
     { group: "magikh0e created", name: "Ready Signal",
       desc: "Heats to 185 °C, then blinks the LED three times when it's ready. The heat stays on, for when you're across the room.",
       actions: [wfLadder([185], 0)].concat(wfBlink(3), [{ type: "setLED", pct: 70 }]) },
+    { group: "magikh0e created", name: "Chamber Purge",
+      desc: "Heat off, then 20 s of air to clear leftover vapor before you empty the chamber.",
+      actions: [{ type: "heatOff" }, fill(20)] },
     { group: "magikh0e created", name: "Clean Cycle (empty chamber)",
       desc: "Burns off residue in an EMPTY filling chamber. It holds 230 °C for 5 minutes, runs the air for 60 s, then turns the heat off. Don't run it with a load in.",
-      actions: [wfLadder([230], 300), { type: "fanOn", secs: 60 }, { type: "heatOff" }] },
+      actions: [wfLadder([230], 300), fill(60), { type: "heatOff" }] },
   ];
 
   let wfTplOpen = false;
@@ -845,10 +863,12 @@
     "":      { label: "target or chamber",  short: "target/chamber" },
   };
 
-  function wfAddTemplate(t) {
-    workflows.push({ id: wfNewId(), name: t.name, actions: sanitizeActions(t.actions) });
+  function wfAddTemplate(t, mode) {
+    const multi = !mode && tplBags(t) > 1 && !/bags/i.test(t.name);   // e.g. "Sampler (3 bags)"
+    const name = t.name + (mode ? WF_MODES[mode].suffix(t) : multi ? " (" + plural(tplBags(t), "bag") + ")" : "");
+    workflows.push({ id: wfNewId(), name: name, actions: sanitizeActions(tplActions(t, mode)) });
     saveWorkflows(); renderWorkflows();
-    status('Added "' + t.name + '" to your workflows.', "ok");
+    status('Added "' + name + '" to your workflows.', "ok");
   }
 
   function renderTemplates() {
@@ -858,11 +878,16 @@
     WF_TEMPLATES.forEach((t) => {
       const g = t.group || "From Project Onyx";
       if (g !== group) { group = g; box.append(el("h3", { class: "v-wf-tplgroup" }, g)); }
+      const note = tplModeNote(t);
       box.append(el("div", { class: "v-wf-tpl" },
-      el("div", { class: "v-wf-tpltext" },
-        el("strong", null, t.name),
-        el("span", { class: "v-wf-tpldesc" }, t.desc)),
-      el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: () => wfAddTemplate(t) }, "+ Add")));
+        el("div", { class: "v-wf-tpltext" },
+          el("strong", null, t.name),
+          el("span", { class: "v-wf-tplbadges" }, tplBadges(t).map((b) => el("span", { class: "v-wf-badge" }, b))),
+          el("span", { class: "v-wf-tpldesc" }, t.desc),
+          note && el("span", { class: "v-wf-tpldesc v-wf-tplmodes" }, note)),
+        el("div", { class: "v-wf-tplbtns" }, tplModes(t).map((m) =>
+          el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: () => wfAddTemplate(t, m) },
+            m ? WF_MODES[m].btn(t) : tplBags(t) > 1 ? "+ " + plural(tplBags(t), "bag") : "+ Add")))));
     });
     return box;
   }
@@ -927,17 +952,22 @@
       await sleep(1000);
     }
   }
-  // Block until the chamber reaches t (°C) or Stop is pressed. Already at or
-  // above t (e.g. stepping down) returns at once. The Volcano climbs roughly
-  // 1 °C/s, so a 15-minute ceiling only trips if something is wrong.
+  // Block until the chamber is at t (°C), give or take WF_COOL_TOL above, or
+  // Stop is pressed. Below t it heats; well above t (stepping a ladder down,
+  // or starting with a still-hot chamber) it waits for the chamber to cool, so
+  // the rung really is that temperature. The Volcano climbs roughly 1 °C/s
+  // but cools slowly, hence the separate ceilings.
   async function wfHeatTo(t) {
     const started = Date.now();
     while (!wfStop) {
       const cur = await readCurrentTemp();
       if (cur != null) curTemp = cur;
-      if (cur != null && cur >= t) return;
-      if (Date.now() - started > WF_HEAT_TIMEOUT_MS) throw new Error("didn't reach " + t + " °C within 15 min");
-      wfSetRun("Heating to " + t + " °C" + (cur != null ? " — now " + cur + " °C" : ""));
+      if (cur != null && cur >= t && cur <= t + WF_COOL_TOL) return;
+      const cooling = cur != null && cur > t + WF_COOL_TOL;
+      const limit = cooling ? WF_COOL_TIMEOUT_MS : WF_HEAT_TIMEOUT_MS;
+      if (Date.now() - started > limit)
+        throw new Error("didn't " + (cooling ? "cool" : "heat") + " to " + t + " °C within " + Math.round(limit / 60000) + " min");
+      wfSetRun((cooling ? "Cooling to " : "Heating to ") + t + " °C" + (cur != null ? " — now " + cur + " °C" : ""));
       await sleep(1000);
     }
   }
