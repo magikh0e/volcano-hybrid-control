@@ -36,6 +36,11 @@ deploy — no build step. Once it's loaded over HTTPS your browser will offer to
 **install it as an app** (or use the in-page Install button); it's a PWA, so it
 also works offline after the first visit.
 
+The live copy is pushed with `python tools/deploy.py` (rsync + Cloudflare
+purge; see `.env.example`). Bump `CACHE` in `service-worker.js` whenever a
+file changes, or installed copies keep the old version — the script refuses
+to deploy until you do. Use `--dry-run` to preview.
+
 ## Browser support
 
 | Platform | Works |

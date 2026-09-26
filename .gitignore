@@ -4,3 +4,9 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+
+# Deploy secrets / local config (see .env.example)
+.env
+
+# Python
+__pycache__/
