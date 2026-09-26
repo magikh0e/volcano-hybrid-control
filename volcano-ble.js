@@ -730,6 +730,10 @@
   const ODD_RUNGS = [179, 191, 205, 217];                  // Vapesuvius rungs 1 / 3 / 5 / 7
   const EXPRESS = [185, 205, 225];
   const oneBag = () => [{ type: "fanOnGlobal", secs: 34 }, { type: "heatOff" }];
+  // n on/off LED flashes, one second each.
+  const wfBlink = (n) => Array.from({ length: n }, () => [
+    { type: "setLED", pct: 100 }, { type: "wait", secs: 1 }, { type: "setLED", pct: 0 }, { type: "wait", secs: 1 },
+  ]).flat();
 
   const WF_TEMPLATES = [
     { name: "Vapesuvius Temp Step",
@@ -806,6 +810,30 @@
     { group: "magikh0e created", name: "Chamber Purge",
       desc: "Heat off, then 20 s of air to clear leftover vapor before you empty the chamber.",
       actions: [{ type: "heatOff" }, { type: "fanOn", secs: 20 }] },
+    { group: "magikh0e created", name: "Microdose Bag",
+      desc: "A small, light bag: 175 °C and a 20 s fill (about half the usual), then the heat turns off.",
+      actions: [wfLadder([175], 5), { type: "fanOnGlobal", secs: 20 }, { type: "heatOff" }] },
+    { group: "magikh0e created", name: "Half Bag @ 190 °C",
+      desc: "A 17 s half-bag at 190 °C, for a top-up without a full bag. Then the heat turns off.",
+      actions: [wfLadder([190], 5), { type: "fanOnGlobal", secs: 17 }, { type: "heatOff" }] },
+    { group: "magikh0e created", name: "Layered Bag",
+      desc: "Two temperatures in one bag. It fills half at 180 °C, heats to 200 °C and fills the rest. You get 15 s to fit the bag before it starts. Keep it on while it reheats.",
+      actions: [wfLadder([180], 15), { type: "fanOn", secs: 17 },
+        wfLadder([200], 0), { type: "fanOn", secs: 17 }, { type: "heatOff" }] },
+    { group: "magikh0e created", name: "Sampler",
+      desc: "Three half-bags at 180, 195 and 210 °C, to compare how a load tastes across the range. Hands-free, with 30 s to fit each bag.",
+      actions: [wfLadder([180], 30), { type: "fanOn", secs: 17 },
+        wfLadder([195], 30), { type: "fanOn", secs: 17 },
+        wfLadder([210], 30), { type: "fanOn", secs: 17 }, { type: "heatOff" }] },
+    { group: "magikh0e created", name: "Whip @ 195 °C",
+      desc: "Holds 195 °C for 15 minutes of whip use, then turns the heat off, so a session can't run on forever.",
+      actions: [wfLadder([195], 900), { type: "heatOff" }] },
+    { group: "magikh0e created", name: "Ready Signal",
+      desc: "Heats to 185 °C, then blinks the LED three times when it's ready. The heat stays on, for when you're across the room.",
+      actions: [wfLadder([185], 0)].concat(wfBlink(3), [{ type: "setLED", pct: 70 }]) },
+    { group: "magikh0e created", name: "Clean Cycle (empty chamber)",
+      desc: "Burns off residue in an EMPTY filling chamber. It holds 230 °C for 5 minutes, runs the air for 60 s, then turns the heat off. Don't run it with a load in.",
+      actions: [wfLadder([230], 300), { type: "fanOn", secs: 60 }, { type: "heatOff" }] },
   ];
 
   let wfTplOpen = false;
