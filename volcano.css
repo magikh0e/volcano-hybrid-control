@@ -23,12 +23,12 @@ h1 { font-size: 1.35rem; margin: 1.3rem 0 0.4rem; }
 h2 { font-size: 1.05rem; margin: 2rem 0 0.5rem; }
 img.banner { display: block; width: 100%; height: auto; border: 1px solid var(--edge); border-radius: 8px; }
 .site-head { display: flex; align-items: center; gap: 1rem; margin: 1rem 0 0.6rem; }
-.site-head .logo { flex: none; width: 112px; height: 112px; border: 1px solid var(--edge); border-radius: 12px; }
+.site-head .logo { flex: none; width: 144px; height: 144px; border: 1px solid var(--edge); border-radius: 14px; }
 .site-head-text { min-width: 0; }
 .site-head h1 { margin-top: 0; }
 @media (max-width: 480px) {
   .site-head { gap: 0.75rem; align-items: flex-start; }
-  .site-head .logo { width: 72px; height: 72px; border-radius: 10px; }
+  .site-head .logo { width: 88px; height: 88px; border-radius: 12px; }
 }
 pre { white-space: pre-wrap; word-wrap: break-word; margin: 0.8rem 0; }
 code { color: var(--accent); }
