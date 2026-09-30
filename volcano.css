@@ -239,6 +239,21 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-wf-tplbadges:empty { display: none; }
 .v-wf-badge { font-size: 0.75rem; padding: 0.05rem 0.45rem; border: 1px solid var(--accent, #e08a3c); border-radius: 999px; color: var(--accent, #e08a3c); white-space: nowrap; }
 .v-wf-tplmodes { font-style: italic; }
+.v-wf-chips { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; }
+.v-wf-filters { display: flex; margin: 0.8rem 0 0.2rem; }
+.v-wf-chip { font: inherit; font-size: 0.8rem; padding: 0.2rem 0.65rem; border-radius: 999px; cursor: pointer;
+  background: transparent; color: inherit; border: 1px solid #2a4a33; }
+.v-wf-chip:hover:not(.active) { background: #10251a; }
+.v-wf-chip.active { background: var(--accent, #e08a3c); border-color: var(--accent, #e08a3c); color: #04140c; }
+.v-wf-chip:focus-visible { outline: 2px solid var(--accent, #e08a3c); outline-offset: 2px; }
+.v-wf-builder { border: 1px solid #14261a; border-radius: 8px; padding: 0.5rem 0.6rem; margin: 0.6rem 0; }
+.v-wf-builder > summary { cursor: pointer; font-weight: 600; }
+.v-wf-builder[open] > summary { margin-bottom: 0.4rem; }
+.v-wf-ladrow { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; align-items: center; margin: 0.45rem 0; }
+.v-wf-ladfield { display: inline-flex; gap: 0.3rem; align-items: center; }
+.v-wf-builder .v-num { width: 4rem; }
+.v-wf-ladprev { font-size: 0.85rem; margin: 0.5rem 0; overflow-wrap: anywhere; }
+.v-wf-laderr { color: #ff9a9a; }
 .v-wf-tplgroup { margin: 0.8rem 0 0.2rem; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent, #e08a3c); }
 
 /* ---- help / FAQ ---- */

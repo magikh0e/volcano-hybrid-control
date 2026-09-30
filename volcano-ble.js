@@ -755,8 +755,8 @@
     bag:  { btn: (t) => "+ " + plural(tplBags(t, "bag"), "bag"), suffix: (t) => " (" + plural(tplBags(t, "bag"), "bag") + ")" },
     whip: { btn: () => "+ Whip", suffix: () => " (whip)" },
   };
-  function tplBadges(t) {
-    return tplModes(t).map((m) => {
+  function tplBadges(t, modes) {
+    return (modes || tplModes(t)).map((m) => {
       if (m === "whip") return "💨 whip · " + plural(t.temps.length, "rung") + " × " + fmtDur(t.whipSecs || WF_WHIP_HOLD);
       const n = tplBags(t, m);
       return n ? "🛍 " + plural(n, "bag") : null;
@@ -767,14 +767,14 @@
     if (!t.temps) return t.actions;
     const rungs = mode === "whip"
       ? t.temps.map((x) => wfLadder([x], t.whipSecs || WF_WHIP_HOLD))
-      : t.temps.flatMap((x) => [wfLadder([x], WF_BAG_FIT)].concat(t.fill || [fill()]));
+      : t.temps.flatMap((x) => [wfLadder([x], t.fitSecs != null ? t.fitSecs : WF_BAG_FIT)].concat(t.fill || [fill()]));
     return (t.pre || []).concat(rungs, [{ type: "heatOff" }], t.post || []);
   }
-  function tplModeNote(t) {
+  function tplModeNote(t, modes) {
     if (!t.temps) return null;
-    return tplModes(t).map((m) => m === "whip"
+    return (modes || tplModes(t)).map((m) => m === "whip"
       ? "Whip: holds each rung " + fmtDur(t.whipSecs || WF_WHIP_HOLD) + "."
-      : "Bags: " + WF_BAG_FIT + " s to fit a fresh bag at each rung, then it fills.").join(" ");
+      : "Bags: " + (t.fitSecs != null ? t.fitSecs : WF_BAG_FIT) + " s to fit a fresh bag at each rung, then it fills.").join(" ");
   }
 
   const WF_TEMPLATES = [
@@ -839,7 +839,7 @@
       bags: 3, actions: [180, 195, 210].flatMap((x) => [wfLadder([x], WF_BAG_FIT), fill(17)]).concat([{ type: "heatOff" }]) },
     { group: "magikh0e created", name: "Whip @ 195 °C",
       desc: "Holds 195 °C for 15 minutes of whip use, then turns the heat off, so a session can't run on forever.",
-      actions: [wfLadder([195], 900), { type: "heatOff" }] },
+      kind: "whip", actions: [wfLadder([195], 900), { type: "heatOff" }] },
     { group: "magikh0e created", name: "Warm-up Hold",
       desc: "Heats to 185 °C and keeps it there for 10 minutes while you use the controls by hand, then turns the heat off.",
       actions: [wfLadder([185], 600), { type: "heatOff" }] },
@@ -855,6 +855,115 @@
   ];
 
   let wfTplOpen = false;
+
+  // ---- template filters -------------------------------------------------------
+  // Ladders match Bags / Whip per mode (and the row then shows only that mode's
+  // button). Fixed templates have a kind: several bags, a single bag, whip, or
+  // a utility, inferred from {bags} unless set explicitly.
+  const WF_FILTERS = [
+    { k: "all",     label: "All" },
+    { k: "bag",     label: "🛍 Bags" },
+    { k: "whip",    label: "💨 Whip" },
+    { k: "single",  label: "Single bag" },
+    { k: "utility", label: "Utility" },
+  ];
+  function tplKind(t) { return t.kind || (t.bags > 1 ? "bag" : t.bags === 1 ? "single" : "utility"); }
+  // The modes a template shows under filter f; empty = hidden.
+  function tplVisibleModes(t, f) {
+    if (f === "all") return tplModes(t);
+    if (t.temps) return tplModes(t).filter((m) => m === f);
+    return tplKind(t) === f ? [null] : [];
+  }
+  let wfTplFilter = "all";
+  try { const f = localStorage.getItem("volcano-tpl-filter"); if (WF_FILTERS.some((x) => x.k === f)) wfTplFilter = f; } catch (e) { /* ignore */ }
+
+  // ---- ladder builder ---------------------------------------------------------
+  // Your own start / end / step ladder, in either mode, turned into a workflow
+  // through the same tplActions() the ready-made ladders use.
+  const LADDER_MAX_RUNGS = 30;
+  let ladderCfg = { start: 180, end: 220, step: 10, mode: "bag", fit: WF_BAG_FIT, fill: WF_BAG_FILL, hold: WF_WHIP_HOLD };
+  let ladderOpen = false;
+  try {
+    const raw = JSON.parse(localStorage.getItem("volcano-ladder-builder") || "null");
+    if (raw && typeof raw === "object") ladderCfg = Object.assign(ladderCfg, raw);
+  } catch (e) { /* ignore */ }
+  function saveLadderCfg() { try { localStorage.setItem("volcano-ladder-builder", JSON.stringify(ladderCfg)); } catch (e) { /* ignore */ } }
+
+  // Rungs from start to end in `step` °C steps (either direction). The end is
+  // always the last rung, even when the step doesn't land on it exactly.
+  // Returns { temps } or { error }.
+  function ladderTemps(c) {
+    const a = Math.round(Number(c.start)), b = Math.round(Number(c.end)), st = Math.round(Number(c.step));
+    if (![a, b].every((v) => Number.isFinite(v) && v >= MIN_T && v <= MAX_T)) return { error: "Start and end must be " + MIN_T + "–" + MAX_T + " °C." };
+    if (!Number.isFinite(st) || st < 1) return { error: "Step must be at least 1 °C." };
+    const dir = b >= a ? 1 : -1, temps = [];
+    for (let t = a; dir > 0 ? t < b : t > b; t += dir * st) {
+      temps.push(t);
+      if (temps.length > LADDER_MAX_RUNGS) return { error: "That's over " + LADDER_MAX_RUNGS + " rungs. Use a bigger step." };
+    }
+    temps.push(b);
+    return { temps: temps };
+  }
+  function ladderTemplate(c, temps) {
+    return { temps: temps, whipSecs: clampSecs(c.hold) || WF_WHIP_HOLD, fitSecs: clampSecs(c.fit),
+      fill: [fill(clampSecs(c.fill) || WF_BAG_FILL)] };
+  }
+  function ladderPreview(c) {
+    const r = ladderTemps(c);
+    if (r.error) return { ok: false, text: r.error };
+    const n = r.temps.length, list = r.temps.join(" → ") + " °C";
+    const down = r.temps.length > 1 && r.temps[1] < r.temps[0];
+    const what = c.mode === "whip"
+      ? "💨 whip, holds each " + fmtDur(clampSecs(c.hold) || WF_WHIP_HOLD) + " (" + fmtDur(n * (clampSecs(c.hold) || WF_WHIP_HOLD)) + " of holds)"
+      : "🛍 " + plural(n, "bag");
+    return { ok: true, text: plural(n, "rung") + ": " + list + " · " + what + (down ? " · steps down, cooling between rungs" : "") };
+  }
+  function wfAddLadder() {
+    const r = ladderTemps(ladderCfg);
+    if (r.error) { status(r.error, "warn"); return; }
+    const t = r.temps, mode = ladderCfg.mode === "whip" ? "whip" : "bag";
+    const base = "Ladder " + t[0] + "→" + t[t.length - 1] + " °C" + (t.length > 2 ? " by " + Math.round(Number(ladderCfg.step)) : "");
+    const tpl = Object.assign(ladderTemplate(ladderCfg, t), { name: base });
+    wfAddTemplate(tpl, mode);
+  }
+
+  function renderLadderBuilder() {
+    const c = ladderCfg;
+    const preview = el("p", { class: "v-wf-ladprev" });
+    const addBtn = el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: wfAddLadder }, "+ Add ladder");
+    const refresh = () => {
+      const pv = ladderPreview(c);
+      preview.textContent = pv.text;
+      preview.classList.toggle("v-wf-laderr", !pv.ok);
+      addBtn.disabled = wfRunning || !pv.ok;
+      saveLadderCfg();
+    };
+    const num = (key, attrs) => wfNum(c[key], (e) => { c[key] = e.target.value; refresh(); }, attrs);
+    const field = (label, input, unit) => el("label", { class: "v-wf-ladfield" },
+      el("span", { class: "v-wf-plabel" }, label), input, el("span", { class: "v-unit" }, unit));
+    const modeBtn = (m, label) => el("button", { class: "v-wf-chip" + (c.mode === m ? " active" : ""), type: "button",
+      "aria-pressed": c.mode === m ? "true" : "false", onClick: () => { c.mode = m; saveLadderCfg(); renderWorkflows(); } }, label);
+    const tRange = { min: MIN_T, max: MAX_T };
+    const box = el("details", { class: "v-wf-builder" },
+      el("summary", null, "🪜 Build your own ladder"),
+      el("p", { class: "v-hint" }, "Pick a start, an end and a step. It runs hands-free from the start rung and turns the heat off at the end. Start above the end to step down; it waits for the chamber to cool between rungs."),
+      el("div", { class: "v-wf-ladrow" },
+        field("start", num("start", tRange), "°C"),
+        field("end", num("end", tRange), "°C"),
+        field("step", num("step", { min: 1, max: 50 }), "°C")),
+      el("div", { class: "v-wf-ladrow" },
+        el("span", { class: "v-wf-chips", role: "group", "aria-label": "Ladder mode" },
+          modeBtn("bag", "🛍 Bags"), modeBtn("whip", "💨 Whip")),
+        c.mode === "whip"
+          ? field("hold", num("hold", { min: 0 }), "s each")
+          : [field("time to fit bag", num("fit", { min: 0 }), "s"), field("fill", num("fill", { min: 1 }), "s")]),
+      preview,
+      addBtn);
+    box.open = ladderOpen;
+    box.addEventListener("toggle", () => { ladderOpen = box.open; });
+    refresh();
+    return box;
+  }
 
   // What Exit When Temp Reached compares against. "" = unset (older saves).
   const WF_EXIT_BY = {
@@ -873,19 +982,28 @@
 
   function renderTemplates() {
     const box = el("div", { class: "v-wf-tpls" },
-      el("p", { class: "v-hint" }, "Ready-made workflows. Adding one copies it into your list below, where you can tweak it."));
+      el("p", { class: "v-hint" }, "Ready-made workflows. Adding one copies it into your list below, where you can tweak it."),
+      renderLadderBuilder());
+    const count = (f) => WF_TEMPLATES.filter((t) => tplVisibleModes(t, f).length).length;
+    box.append(el("div", { class: "v-wf-chips v-wf-filters", role: "group", "aria-label": "Filter templates" },
+      WF_FILTERS.map((f) => el("button", { class: "v-wf-chip" + (wfTplFilter === f.k ? " active" : ""), type: "button",
+        "aria-pressed": wfTplFilter === f.k ? "true" : "false",
+        onClick: () => { wfTplFilter = f.k; try { localStorage.setItem("volcano-tpl-filter", f.k); } catch (e) { /* ignore */ } renderWorkflows(); } },
+        f.label + " (" + count(f.k) + ")"))));
     let group = null;
     WF_TEMPLATES.forEach((t) => {
+      const modes = tplVisibleModes(t, wfTplFilter);
+      if (!modes.length) return;
       const g = t.group || "From Project Onyx";
       if (g !== group) { group = g; box.append(el("h3", { class: "v-wf-tplgroup" }, g)); }
-      const note = tplModeNote(t);
+      const note = tplModeNote(t, modes);
       box.append(el("div", { class: "v-wf-tpl" },
         el("div", { class: "v-wf-tpltext" },
           el("strong", null, t.name),
-          el("span", { class: "v-wf-tplbadges" }, tplBadges(t).map((b) => el("span", { class: "v-wf-badge" }, b))),
+          el("span", { class: "v-wf-tplbadges" }, tplBadges(t, modes).map((b) => el("span", { class: "v-wf-badge" }, b))),
           el("span", { class: "v-wf-tpldesc" }, t.desc),
           note && el("span", { class: "v-wf-tpldesc v-wf-tplmodes" }, note)),
-        el("div", { class: "v-wf-tplbtns" }, tplModes(t).map((m) =>
+        el("div", { class: "v-wf-tplbtns" }, modes.map((m) =>
           el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: () => wfAddTemplate(t, m) },
             m ? WF_MODES[m].btn(t) : tplBags(t) > 1 ? "+ " + plural(tplBags(t), "bag") : "+ Add")))));
     });
