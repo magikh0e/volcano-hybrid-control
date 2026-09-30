@@ -27,6 +27,9 @@ settings don't have to be duplicated):
     CF_ZONE_ID           optional, enables purge (magikh0e.pl zone covers the subdomain)
     CF_API_TOKEN         optional, required for purge
 
+Sitemap: every run first sets sitemap.xml's <lastmod> dates from git (the
+last commit touching each page, or today if it has uncommitted edits).
+
 Service-worker guard:
     service-worker.js is cache-first for every same-origin GET, so an
     installed PWA keeps serving the old files until CACHE changes. Before
@@ -78,6 +81,10 @@ EXCLUDES = [
 ]
 
 SW_FILE = "service-worker.js"
+# Crawler-only files the app never fetches: changing them needs no CACHE bump.
+SW_EXEMPT = {"robots.txt", "sitemap.xml"}
+SITEMAP = "sitemap.xml"
+LOC_RE = re.compile(r"(<loc>([^<]+)</loc>\s*<lastmod>)([^<]*)(</lastmod>)")
 SW_CACHE_RE = re.compile(r'const\s+CACHE\s*=\s*"([^"]+)"')
 
 
@@ -248,6 +255,41 @@ def local_sw_cache():
     return m.group(1) if m else None
 
 
+def git_date(rel):
+    """YYYY-MM-DD the file last changed: today if it has uncommitted edits,
+    else its last commit date. None if git can't say."""
+    try:
+        dirty = subprocess.run(["git", "status", "--porcelain", "--", rel], cwd=ROOT,
+                               capture_output=True, text=True, check=True).stdout.strip()
+        if dirty:
+            return time.strftime("%Y-%m-%d")
+        out = subprocess.run(["git", "log", "-1", "--format=%cs", "--", rel], cwd=ROOT,
+                             capture_output=True, text=True, check=True).stdout.strip()
+        return out or None
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def stamp_sitemap():
+    """Set each <lastmod> in sitemap.xml to when that page last changed, so
+    crawlers see real dates. Returns True if the file was rewritten."""
+    path = os.path.join(ROOT, SITEMAP)
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+
+    def fix(m):
+        rel = m.group(2).replace(SITE_BASE, "").lstrip("/") or "index.html"
+        d = git_date(rel)
+        return m.group(1) + (d or m.group(3)) + m.group(4)
+
+    new = LOC_RE.sub(fix, text)
+    if new == text:
+        return False
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        f.write(new)
+    return True
+
+
 def check_live():
     """Compare the live service-worker CACHE name against the local one."""
     print("\n== freshness check ==")
@@ -273,7 +315,14 @@ def main():
     ap.add_argument("--check", action="store_true", help="only compare live vs local SW cache")
     ap.add_argument("--no-sw-check", action="store_true",
                     help="deploy even if files changed without a CACHE bump")
+    ap.add_argument("--stamp-sitemap", action="store_true",
+                    help="only update sitemap.xml lastmod dates from git, then exit")
     args = ap.parse_args()
+
+    if stamp_sitemap():
+        print(f"== {SITEMAP}: lastmod dates updated from git (commit it) ==")
+    if args.stamp_sitemap:
+        return
 
     load_dotenv(os.path.join(ROOT, ".env"))
     load_dotenv(SITE_ENV)
@@ -308,7 +357,7 @@ def main():
     for p in deleted:
         print(f"  - {p}")
 
-    stale_sw = [p for p in sent if p != SW_FILE]
+    stale_sw = [p for p in sent if p != SW_FILE and p not in SW_EXEMPT]
     if stale_sw and SW_FILE not in sent and not args.no_sw_check:
         print(f"\n!! {len(stale_sw)} file(s) changed but {SW_FILE} didn't -- installed PWAs "
               f"would keep the old shell.\n   Bump CACHE (currently {local_sw_cache()}) "
