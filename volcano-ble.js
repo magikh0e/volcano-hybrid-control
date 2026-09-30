@@ -734,6 +734,8 @@
   const WF_BAG_FIT = 30;     // s at each rung to fit a fresh bag before it fills
   const WF_BAG_FILL = 34;    // s for a full bag
   const WF_WHIP_HOLD = 180;  // s per rung in whip mode, unless a template sets whipSecs
+  const PARTY_ROUNDS = 8;    // Party Rounds: capped so the heater can't run on forever
+  const PARTY_GAP = 150;     // s between Party Rounds bags (pass it round, fit the next)
   const fill = (secs) => ({ type: "fanOn", secs: secs || WF_BAG_FILL });   // blocks until the bag is full
   // n on/off LED flashes, one second each.
   const wfBlink = (n) => Array.from({ length: n }, () => [
@@ -831,6 +833,11 @@
         { type: "wait", secs: WF_BAG_FIT }, fill(),
         { type: "wait", secs: WF_BAG_FIT }, fill(),
         { type: "wait", secs: WF_BAG_FIT }, fill(), { type: "heatOff" }] },
+    { group: "magikh0e created", name: "Party Rounds",
+      desc: "A bag every few minutes for a group. It heats to 190 °C, then fills a bag, waits 2½ minutes while it's passed round, and fills the next. It stops after 8 rounds (about 25 minutes) and turns the heat off, so it can't run on unattended. Press Stop to end sooner.",
+      bags: PARTY_ROUNDS, actions: [wfLadder([190], WF_BAG_FIT), fill()]
+        .concat(Array.from({ length: PARTY_ROUNDS - 1 }, () => [{ type: "wait", secs: PARTY_GAP }, fill()]).flat(),
+          [{ type: "heatOff" }]) },
     { group: "magikh0e created", name: "Layered Bag",
       desc: "Two temperatures in one bag. It fills half at 180 °C, heats to 200 °C and fills the rest. You get 15 s to fit the bag before it starts. Keep it on while it reheats.",
       bags: 1, actions: [wfLadder([180], 15), fill(17), wfLadder([200], 0), fill(17), { type: "heatOff" }] },
