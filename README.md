@@ -1,6 +1,6 @@
 # volcano-hybrid-control
 
-![Volcano Hybrid — Web BLE Controller](banner.webp)
+[![Volcano Hybrid Web App — Bluetooth control in your browser](og.jpg)](https://volcano.magikh0e.pl/)
 
 Control a **Storz &amp; Bickel Volcano Hybrid** straight from your browser over
 **Web Bluetooth** — no app, no backend, no Home Assistant. The browser is the BLE
