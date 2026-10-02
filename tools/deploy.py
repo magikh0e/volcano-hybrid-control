@@ -68,6 +68,7 @@ EXCLUDES = [
     ".github/",
     ".claude/",
     "tools/",
+    "deploy/",     # server config (vhost) + runbook: kept in git, never served
     ".env",
     ".env.example",
     ".gitignore",
