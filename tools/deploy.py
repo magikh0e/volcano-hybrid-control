@@ -82,7 +82,7 @@ EXCLUDES = [
 
 SW_FILE = "service-worker.js"
 # Files only crawlers / link previews fetch, never the app: no CACHE bump needed.
-SW_EXEMPT = {"robots.txt", "sitemap.xml", "og.jpg"}
+SW_EXEMPT = {"robots.txt", "sitemap.xml", "og.jpg", "404.html"}
 SITEMAP = "sitemap.xml"
 LOC_RE = re.compile(r"(<loc>([^<]+)</loc>\s*<lastmod>)([^<]*)(</lastmod>)")
 SW_CACHE_RE = re.compile(r'const\s+CACHE\s*=\s*"([^"]+)"')
