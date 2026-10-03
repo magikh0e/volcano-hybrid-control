@@ -16,11 +16,25 @@ and polish. The version shown in the app footer comes from `APP_VERSION` in `vol
 - Sound and vibration cues: two beeps when it's time to fit a fresh bag, one when the bag is
   full. Toggle with "🔔 Sound & vibration cues" on the Workflows tab.
 - "■ Stop & heat off" in the running banner, next to Stop.
+- App units: show temperatures in °F (Settings → App units). Current and target temperature,
+  presets and workflow progress follow it; the Volcano's own screen has its own setting.
+- Control tab: an interactive Volcano drawing replaces the Current/Target boxes. Its screen
+  shows current and target temperature; − and + change the target (sent after a short
+  pause), and HEAT and AIR toggle the heater and fan, lighting up while on. A dropdown under
+  it runs any saved workflow or template, with progress and Stop right there.
+- Themes: Amber (default), Phosphor, Ice, Neon, Light and High contrast, picked in
+  Settings → App → Theme and shared by the app, Help and 404 pages.
+- Backup and restore: "⤓ Backup" downloads every saved workflow and the presets as one file;
+  "⤒ Restore" adds the workflows back (skipping any already saved) and restores the presets.
 
 ### Changed
 
 - The running banner says "Fit a fresh bag" during the wait before a fill, and "Filling bag"
   while it fills.
+- Settings: the Volcano's display setting is now labelled "Device units", and a new "App"
+  section holds App units and Install app.
+- The Install app button moved from the footer to Settings → App, where it also says when the
+  app is already installed or how to install it from the browser menu.
 
 ## [1.0.0] - 2026-10-03
 

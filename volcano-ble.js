@@ -93,7 +93,11 @@
     });
     document.querySelectorAll(".v-segbtn").forEach((el) => { el.disabled = !on; });
     renderPresets();     // preset buttons follow connection state (unless editing)
-    renderWorkflows();   // workflow Run buttons follow connection state
+    renderWorkflows();   // workflow Run buttons follow connection state (and the drawing's picker)
+    ["v-dev-minus", "v-dev-plus", "v-dev-heat", "v-dev-air"].forEach((id) => {
+      const n = $(id); if (n) n.setAttribute("aria-disabled", on ? "false" : "true");
+    });
+    const ds = $("v-dev-state"); if (ds) ds.textContent = on ? (device && device.name ? device.name : "connected") : "not connected";
     if (!on) {
       setLed("v-heatled", false); setLed("v-fanled", false);
       const cur = $("v-cur"); if (cur) cur.textContent = "---";
@@ -102,14 +106,46 @@
     }
   }
 
+  const DEV_LIGHTS = { "v-heatled": ["v-dev-heat", "v-dev-heatdot"], "v-fanled": ["v-dev-air"] };
   function setLed(id, on) {
     const el = $(id);
     if (el) el.classList.toggle("on", !!on);
+    (DEV_LIGHTS[id] || []).forEach((d) => { const n = $(d); if (n) n.classList.toggle("on", !!on); });
   }
+
+  // The device works in °C; the app can show °F. Only what's displayed is
+  // converted: values are stored and written in °C.
+  let appF = false;
+  try { appF = localStorage.getItem("volcano-app-units") === "F"; } catch (e) { /* ignore */ }
+  const cToF = (c) => Math.round(c * 9 / 5 + 32);
+  const fToC = (f) => Math.round((f - 32) * 5 / 9);
+  function fmtT(c) { return appF ? cToF(c) + " °F" : c + " °C"; }
+  function fmtDeg(c) { return (appF ? cToF(c) : c) + "°"; }
 
   function showTarget() {
     const el = $("v-set");
-    if (el) el.textContent = target + " °C";
+    if (el) el.textContent = fmtT(target);
+  }
+  function showCurrent() {
+    const c = $("v-cur");
+    if (c) c.textContent = curTemp == null ? "---" : fmtT(curTemp);
+  }
+  function setAppUnits(f) {
+    appF = !!f;
+    try { localStorage.setItem("volcano-app-units", appF ? "F" : "C"); } catch (e) { /* ignore */ }
+    document.querySelectorAll("#v-appunits .v-segbtn").forEach((b) => {
+      const active = (b.dataset.unit === "F") === appF;
+      b.classList.toggle("active", active);
+      b.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+    const pu = $("v-preset-unit"); if (pu) pu.textContent = appF ? "°F" : "°C";
+    const pin = $("v-preset-add-in");
+    if (pin) {
+      pin.min = appF ? cToF(MIN_T) : MIN_T; pin.max = appF ? cToF(MAX_T) : MAX_T;
+      pin.placeholder = appF ? "383" : "195";
+      pin.setAttribute("aria-label", "New preset temperature in " + (appF ? "Fahrenheit" : "Celsius"));
+    }
+    showTarget(); showCurrent(); renderPresets();
   }
 
   async function write(uuid, bytes) {
@@ -172,7 +208,7 @@
       if (curTempChar) {
         const dv = await curTempChar.readValue();
         curTemp = Math.round(parseTemp(dv));
-        const c = $("v-cur"); if (c) c.textContent = curTemp + " °C";
+        showCurrent();
       }
       await updateTimers();
     } catch (e) { /* transient read errors are fine between polls */ }
@@ -402,8 +438,7 @@
       await curTempChar.startNotifications();
       curTempChar.addEventListener("characteristicvaluechanged", (ev) => {
         curTemp = Math.round(parseTemp(ev.target.value));
-        const c = $("v-cur");
-        if (c) c.textContent = curTemp + " °C";
+        showCurrent();
       });
     } catch (e) { /* fall back to polling below */ }
 
@@ -447,7 +482,7 @@
       const ch = setTempChar || await svc.getCharacteristic(SET_TEMP);
       if (ch.writeValueWithResponse) await ch.writeValueWithResponse(buf);
       else await ch.writeValue(buf);
-      status("Target set to " + target + " °C.", "ok");
+      status("Target set to " + fmtT(target) + ".", "ok");
     } catch (e) { status("Set failed: " + (e.message || e), "err"); }
   }
 
@@ -494,10 +529,10 @@
       b.type = "button";
       b.className = "v-preset" + (presetEditMode ? " v-preset-editing" : "");
       b.dataset.temp = String(t);
-      b.textContent = presetEditMode ? (t + "° ×") : (t + "°");
+      b.textContent = presetEditMode ? (fmtDeg(t) + " ×") : fmtDeg(t);
       b.disabled = presetEditMode ? false : !connected;
       b.setAttribute("aria-label",
-        presetEditMode ? ("Remove " + t + " °C preset") : ("Set target " + t + " °C"));
+        presetEditMode ? ("Remove " + fmtT(t) + " preset") : ("Set target " + fmtT(t)));
       box.appendChild(b);
     });
     if (presetEditMode && !presets.length) {
@@ -527,16 +562,17 @@
 
   function addPreset() {
     const inp = $("v-preset-add-in"); if (!inp) return;
-    const v = Math.round(Number(inp.value));
+    const raw = Math.round(Number(inp.value));
+    const v = appF ? fToC(raw) : raw;   // typed in the app's unit, stored in °C
     if (!inp.value.trim() || !Number.isFinite(v) || v < MIN_T || v > MAX_T) {
-      status("Preset must be " + MIN_T + "–" + MAX_T + " °C.", "warn"); return;
+      status("Preset must be " + fmtT(MIN_T) + "–" + fmtT(MAX_T) + ".", "warn"); return;
     }
-    if (presets.includes(v)) { status(v + " °C is already a preset.", "warn"); inp.value = ""; return; }
+    if (presets.includes(v)) { status(fmtT(v) + " is already a preset.", "warn"); inp.value = ""; return; }
     presets = sanitizePresets([...presets, v]);
     savePresets();
     renderPresets();
     inp.value = "";
-    status("Added " + v + " °C preset.", "ok");
+    status("Added " + fmtT(v) + " preset.", "ok");
   }
 
   function resetPresets() {
@@ -549,7 +585,7 @@
   async function toggleHeat() {
     try {
       const next = !heatOn;
-      if (next && !confirm("Turn the heater ON? It will ramp to " + target + " °C.")) return;
+      if (next && !confirm("Turn the heater ON? It will ramp to " + fmtT(target) + ".")) return;
       await write(next ? HEAT_ON : HEAT_OFF, [next ? 1 : 0]);
       status("Heater " + (next ? "ON" : "OFF") + ".", "ok");
       setTimeout(pollStatus, 400);
@@ -650,7 +686,7 @@
           msg = rungLabel + " — filling bag… " + ladderFillLeft + "s";
         } catch (e) { msg = rungLabel + " — reached temp, starting fill…"; }   // retry next tick
       } else {
-        msg = rungLabel + " — heating to " + LADDER[idx] + " °C…";
+        msg = rungLabel + " — heating to " + fmtT(LADDER[idx]) + "…";
       }
     }
 
@@ -658,7 +694,7 @@
     if (last && !ladderFilling && (!fillOn || ladderRungFilled)) {
       if (ladderTimer) { clearInterval(ladderTimer); ladderTimer = null; }
       resetLadderButton();
-      status("Ladder complete — holding at " + LADDER[idx] + " °C.", "ok");
+      status("Ladder complete — holding at " + fmtT(LADDER[idx]) + ".", "ok");
       return;
     }
 
@@ -666,7 +702,7 @@
     if (msg == null) {                    // default: countdown to the next rung
       const rem = LADDER_STEP_SECS - (ladderElapsed % LADDER_STEP_SECS);
       const mm = Math.floor(rem / 60), ss = String(rem % 60).padStart(2, "0");
-      msg = rungLabel + " — " + LADDER[idx] + " °C · next in " + mm + ":" + ss;
+      msg = rungLabel + " — " + fmtT(LADDER[idx]) + " · next in " + mm + ":" + ss;
     }
     status(msg, "ok");
     ladderElapsed += 1;
@@ -676,7 +712,7 @@
     if (ladderTimer) { stopLadder("Ladder stopped.", "warn"); return; }
     const fillOn = !!($("v-ladder-fill") && $("v-ladder-fill").checked);
     if (!confirm("Start the Vapesuvius ladder? Heat turns on and the target walks " +
-                 LADDER[0] + "→" + LADDER[LADDER.length - 1] + " °C, one rung every 5 min (~35 min)." +
+                 fmtT(LADDER[0]) + "→" + fmtT(LADDER[LADDER.length - 1]) + ", one rung every 5 min (~35 min)." +
                  (fillOn ? " A bag is filled automatically once each rung reaches temp." : ""))) return;
     try {
       await write(HEAT_ON, [1]); heatOn = true; setLed("v-heatled", true);
@@ -1127,7 +1163,10 @@
   // ---- executor -------------------------------------------------------------
 
   function sleep(ms) { return new Promise((res) => setTimeout(res, ms)); }
-  function wfSetRun(txt) { wfRunText = txt; const el = $("v-wf-run"); if (el) el.textContent = txt; }
+  function wfSetRun(txt) {
+    wfRunText = txt;
+    ["v-wf-run", "v-dev-runtext"].forEach((id) => { const el = $(id); if (el) el.textContent = txt; });
+  }
 
   // ---- run helpers: keep the screen awake, bag cues ---------------------------
   // A phone that sleeps mid-run can suspend the page and drop the BLE link, so a
@@ -1164,7 +1203,8 @@
   function wfBeep(times, ms) {
     if (!wfCuesOn) return;
     try {
-      if (navigator.vibrate) navigator.vibrate(times > 1 ? [150, 100, 150] : [400]);
+      const tapped = !navigator.userActivation || navigator.userActivation.hasBeenActive;   // vibrate needs a prior tap
+      if (navigator.vibrate && tapped) navigator.vibrate(times > 1 ? [150, 100, 150] : [400]);
       if (!wfAudio) return;
       const t0 = wfAudio.currentTime;
       for (let k = 0; k < times; k++) {
@@ -1214,7 +1254,7 @@
       const limit = cooling ? WF_COOL_TIMEOUT_MS : WF_HEAT_TIMEOUT_MS;
       if (Date.now() - started > limit)
         throw new Error("didn't " + (cooling ? "cool" : "heat") + " to " + t + " °C within " + Math.round(limit / 60000) + " min");
-      wfSetRun((cooling ? "Cooling to " : "Heating to ") + t + " °C" + (cur != null ? " — now " + cur + " °C" : ""));
+      wfSetRun((cooling ? "Cooling to " : "Heating to ") + fmtT(t) + (cur != null ? " — now " + fmtT(cur) : ""));
       await sleep(1000);
     }
   }
@@ -1276,7 +1316,7 @@
             const cur = a.by === "target" ? null : await readCurrentTemp();
             const set = a.by === "chamber" ? null : await readTargetTemp();
             if ((cur != null && cur >= lim) || (set != null && set >= lim)) {
-              wfSetRun("Exit — reached " + lim + " °C"); i = wf.actions.length;
+              wfSetRun("Exit — reached " + fmtT(lim)); i = wf.actions.length;
             } else i++;
             break;
           }
@@ -1292,8 +1332,8 @@
             }
             const fit = wfFitsBag(wf.actions, i) && w > 0;
             if (fit && !wfStop) wfBeep(2, 150);
-            await wfSleep(w, fit ? "Fit a fresh bag" + (set != null ? " (" + set + " °C)" : "")
-              : "Hold " + (set != null ? set + " °C" : "")); paused = true; i++; break;
+            await wfSleep(w, fit ? "Fit a fresh bag" + (set != null ? " (" + fmtT(set) + ")" : "")
+              : "Hold " + (set != null ? fmtT(set) : "")); paused = true; i++; break;
           }
           case "loop":
             if (!paused) throw new Error("a Loop with no Wait/Fan step would run forever — add a Wait");
@@ -1342,7 +1382,66 @@
       value: (val == null ? "" : val), disabled: wfRunning, onInput: on }, attrs || {}));
   }
 
+  // ---- the Control tab's Volcano drawing ---------------------------------------
+  // −/+ change the target at once and send it 0.6 s after the last press, like
+  // the device's own buttons; HEAT and AIR toggle the heater and fan.
+  let devCommitTimer = null;
+  function devBump(delta) {
+    bumpTarget(delta);
+    clearTimeout(devCommitTimer);
+    devCommitTimer = setTimeout(() => { if (svc) commitTarget(); }, 600);
+  }
+  function bindDeviceButtons() {
+    const act = { "v-dev-minus": () => devBump(-STEP), "v-dev-plus": () => devBump(STEP),
+      "v-dev-heat": () => toggleHeat(), "v-dev-air": () => toggleFan() };
+    Object.keys(act).forEach((id) => {
+      const n = $(id); if (!n) return;
+      const go = () => { if (n.getAttribute("aria-disabled") !== "true") act[id](); };
+      n.addEventListener("click", go);
+      n.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+    });
+  }
+
+  // Profile picker under the drawing: saved workflows, then every template.
+  let devPick = "";
+  function devProfiles() {
+    const list = workflows.map((w) => ({ key: "wf:" + w.id, group: "My workflows", label: w.name || "Untitled",
+      run: () => runWorkflow(w) }));
+    WF_TEMPLATES.forEach((t) => tplModes(t).forEach((m) => list.push({
+      key: "tpl:" + t.name + "|" + (m || ""), group: "Templates · " + (t.group || "From Project Onyx"),
+      label: tplName(t, m), run: () => wfRunTemplate(t, m) })));
+    return list;
+  }
+  function renderDevicePicker() {
+    const box = $("v-dev-run"); if (!box) return;
+    box.textContent = "";
+    const connected = document.body.classList.contains("v-connected");
+    if (wfRunning) {
+      box.append(el("div", { class: "v-dev-running", role: "status" },
+        el("strong", null, "▶ " + wfRunName),
+        el("span", { class: "v-wf-run", id: "v-dev-runtext" }, wfRunText)),
+        el("div", { class: "v-wf-runbtns" },
+          el("button", { class: "v-btn v-wf-stop", type: "button", onClick: () => { wfStop = true; } }, "■ Stop"),
+          el("button", { class: "v-btn v-wf-stop", type: "button", onClick: () => { wfStop = true; wfStopHeat = true; } }, "■ Stop & heat off")));
+      return;
+    }
+    const profiles = devProfiles();
+    if (!profiles.some((p) => p.key === devPick)) devPick = profiles.length ? profiles[0].key : "";
+    const sel = el("select", { class: "v-wf-type v-dev-select", "aria-label": "Workflow or template to run",
+      onChange: (e) => { devPick = e.target.value; } });
+    let group = null, og = null;
+    profiles.forEach((p) => {
+      if (p.group !== group) { group = p.group; og = el("optgroup", { label: group }); sel.append(og); }
+      og.append(el("option", { value: p.key, selected: p.key === devPick }, p.label));
+    });
+    box.append(el("div", { class: "v-dev-pick" }, sel,
+      el("button", { class: "v-btn", type: "button", disabled: !connected || !profiles.length,
+        title: connected ? "Run the selected workflow or template" : "Connect to run",
+        onClick: () => { const p = devProfiles().find((x) => x.key === devPick); if (p) p.run(); } }, "▶ Run")));
+  }
+
   function renderWorkflows() {
+    renderDevicePicker();
     const box = $("v-workflows"); if (!box) return;
     box.textContent = "";
     const connected = document.body.classList.contains("v-connected");
@@ -1350,7 +1449,12 @@
       el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: wfCreate }, "+ New workflow"),
       el("button", { class: "v-btn" + (wfTplOpen ? " active" : ""), type: "button", "aria-expanded": wfTplOpen ? "true" : "false",
         onClick: () => { wfTplOpen = !wfTplOpen; renderWorkflows(); } }, "📋 Templates"),
-      el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: wfImport }, "Import"),
+      el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: wfImport,
+        title: "Paste a share link or a workflow's JSON" }, "Import"),
+      el("button", { class: "v-btn", type: "button", disabled: !workflows.length && !presets.length, onClick: wfBackup,
+        title: "Download every saved workflow and your presets as one file" }, "⤓ Backup"),
+      el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: wfRestorePick,
+        title: "Add the workflows (and presets) from a backup file" }, "⤒ Restore"),
       el("label", { class: "v-check v-wf-cues", title: "Beep (and vibrate on phones) when it's time to fit a bag, and when it's full" },
         el("input", { type: "checkbox", checked: wfCuesOn, onChange: (e) => {
           wfCuesOn = e.target.checked;
@@ -1469,6 +1573,50 @@
     return wrap;
   }
 
+  // ---- backup / restore: every saved workflow plus the presets, as one file ----
+  const BACKUP_APP = "volcano-hybrid-control";
+  function wfBackup() {
+    const data = { app: BACKUP_APP, version: APP_VERSION, exported: new Date().toISOString(),
+      workflows: workflows.map((w) => ({ name: w.name, actions: w.actions })), presets: presets.slice() };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "volcano-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    status("Backed up " + plural(workflows.length, "workflow") + " and " + plural(presets.length, "preset") + ".", "ok");
+  }
+  function wfRestorePick() {
+    const inp = document.createElement("input");
+    inp.type = "file"; inp.accept = ".json,application/json";
+    inp.addEventListener("change", () => { if (inp.files && inp.files[0]) wfRestore(inp.files[0]); });
+    inp.click();
+  }
+  async function wfRestore(file) {
+    let data;
+    try { data = JSON.parse(await file.text()); } catch (e) { status("That file isn't a valid backup.", "err"); return; }
+    const list = Array.isArray(data) ? data : (data && Array.isArray(data.workflows) ? data.workflows : null);
+    if (!list) { status("No workflows found in that file.", "warn"); return; }
+    const key = (w) => (w.name || "") + "\u0000" + JSON.stringify(w.actions || []);
+    const have = new Set(workflows.map(key));
+    const incoming = list.filter((w) => w && Array.isArray(w.actions))
+      .map((w) => ({ name: w.name || "Restored workflow", actions: sanitizeActions(w.actions) }));
+    const fresh = incoming.filter((w) => !have.has(key(w)));
+    let newPresets = data && Array.isArray(data.presets) ? sanitizePresets(data.presets) : null;
+    if (newPresets && JSON.stringify(newPresets) === JSON.stringify(presets)) newPresets = null;   // already the same
+    const msg = "Restore from " + file.name + "?\n\n" +
+      "• Add " + plural(fresh.length, "workflow") + (incoming.length > fresh.length ? " (" + (incoming.length - fresh.length) + " already here, skipped)" : "") + "\n" +
+      (newPresets && newPresets.length ? "• Replace your presets with the backup's " + newPresets.length + "\n" : "") +
+      "\nNothing else is removed.";
+    if (!fresh.length && !(newPresets && newPresets.length)) { status("Nothing new in that backup.", "ok"); return; }
+    if (!confirm(msg)) return;
+    fresh.forEach((w) => workflows.push({ id: wfNewId(), name: w.name, actions: w.actions }));
+    saveWorkflows();
+    if (newPresets && newPresets.length) { presets = newPresets; savePresets(); renderPresets(); }
+    renderWorkflows();
+    status("Restored " + plural(fresh.length, "workflow") + (newPresets && newPresets.length ? " and your presets" : "") + ".", "ok");
+  }
+
   function wfCreate() {
     workflows.push({ id: wfNewId(), name: "New workflow " + (workflows.length + 1), actions: [] });
     saveWorkflows(); renderWorkflows();
@@ -1585,6 +1733,7 @@
     if (!workflows.length) wfTplOpen = true;   // nothing saved yet: templates are the place to start
     setConnected(false);   // also renders the presets + workflows
     const bind = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
+    bindDeviceButtons();
     bind("v-connect", "click", connect);
     bind("v-reconnect", "click", reconnect);
     bind("v-disconnect", "click", disconnect);
@@ -1614,6 +1763,12 @@
     if (presetAddIn) presetAddIn.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); addPreset(); }
     });
+    const appUnits = $("v-appunits");
+    if (appUnits) appUnits.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-unit]");
+      if (b) setAppUnits(b.dataset.unit === "F");
+    });
+    setAppUnits(appF);
     const units = $("v-units");
     if (units) units.addEventListener("click", (e) => {
       const b = e.target.closest("button[data-unit]");

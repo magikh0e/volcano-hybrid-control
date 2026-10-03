@@ -26,6 +26,7 @@
 <link rel="stylesheet" href="volcano.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0a0a0a">
+<script src="theme.js"></script>
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -89,15 +90,33 @@ desktop Chrome / Edge / Opera or Android Chrome.</p>
 
   <!-- ===== Control ===== -->
   <section class="v-tabpanel" data-tab="control" role="tabpanel" id="panel-control" aria-labelledby="tab-control">
-    <div class="v-readout">
-      <div class="v-cell">
-        <div class="v-label">Current</div>
-        <div class="v-value" id="v-cur">---</div>
-      </div>
-      <div class="v-cell">
-        <div class="v-label">Target</div>
-        <div class="v-value" id="v-set">190 &deg;C</div>
-      </div>
+    <div class="v-device">
+      <svg class="vd" id="v-dev-svg" viewBox="0 0 420 352" role="group" aria-label="Volcano control panel">
+        <rect class="vd-body" x="168" y="16" width="84" height="34" rx="6"/>
+        <path class="vd-body" d="M164 48 H256 L386 268 H34 Z"/>
+        <rect class="vd-base" x="26" y="262" width="368" height="70" rx="18"/>
+        <rect class="vd-foot" x="72" y="330" width="52" height="12" rx="4"/>
+        <rect class="vd-foot" x="296" y="330" width="52" height="12" rx="4"/>
+        <path class="vd-panel" d="M210 70 L360 258 H60 Z"/>
+        <rect class="vd-screen" x="160" y="132" width="100" height="78" rx="6"/>
+        <circle class="vd-heatdot" id="v-dev-heatdot" cx="169" cy="141" r="4"/>
+        <text class="vd-cur" id="v-cur" x="252" y="170" text-anchor="end">---</text>
+        <text class="vd-set" id="v-set" x="250" y="198" text-anchor="end">190 &#176;C</text>
+        <g class="vd-btn" id="v-dev-minus" role="button" tabindex="0" aria-label="Lower target">
+          <rect x="104" y="196" width="48" height="28" rx="14"/><text x="128" y="216" text-anchor="middle">&#8722;</text>
+        </g>
+        <g class="vd-btn vd-small" id="v-dev-heat" role="button" tabindex="0" aria-label="Heater on or off">
+          <rect x="104" y="230" width="48" height="20" rx="10"/><text x="128" y="244" text-anchor="middle">HEAT</text>
+        </g>
+        <g class="vd-btn" id="v-dev-plus" role="button" tabindex="0" aria-label="Raise target">
+          <rect x="268" y="196" width="48" height="28" rx="14"/><text x="292" y="216" text-anchor="middle">+</text>
+        </g>
+        <g class="vd-btn vd-small" id="v-dev-air" role="button" tabindex="0" aria-label="Fan on or off">
+          <rect x="268" y="230" width="48" height="20" rx="10"/><text x="292" y="244" text-anchor="middle">AIR</text>
+        </g>
+        <text class="vd-state" id="v-dev-state" x="210" y="300" text-anchor="middle">not connected</text>
+      </svg>
+      <div class="v-dev-run" id="v-dev-run"><!-- profile picker, rendered by volcano-ble.js --></div>
     </div>
 
     <div class="v-row">
@@ -123,7 +142,7 @@ desktop Chrome / Edge / Opera or Android Chrome.</p>
       <div class="v-row">
         <span class="v-rowlabel">Add</span>
         <input id="v-preset-add-in" class="v-num" type="number" min="40" max="230" step="1" inputmode="numeric" aria-label="New preset temperature in Celsius" placeholder="195">
-        <span class="v-unit">&deg;C</span>
+        <span class="v-unit" id="v-preset-unit">&deg;C</span>
         <button id="v-preset-add" class="v-btn" type="button">+ Add</button>
         <button id="v-preset-reset" class="v-btn" type="button">Reset</button>
       </div>
@@ -173,7 +192,7 @@ desktop Chrome / Edge / Opera or Android Chrome.</p>
         <span class="v-hint" id="v-led-cur"></span>
       </div>
       <div class="v-row">
-        <span class="v-rowlabel">Units</span>
+        <span class="v-rowlabel">Device units</span>
         <div class="v-seg" id="v-units" role="group" aria-label="Temperature units shown on the device">
           <button class="v-segbtn" type="button" data-unit="C" aria-pressed="false" disabled>&deg;C</button>
           <button class="v-segbtn" type="button" data-unit="F" aria-pressed="false" disabled>&deg;F</button>
@@ -186,7 +205,27 @@ desktop Chrome / Edge / Opera or Android Chrome.</p>
       <div class="v-row">
         <label class="v-check"><input type="checkbox" id="v-vibrate" disabled> Vibration alert (buzz on target reached)</label>
       </div>
-      <p class="v-hint">These change the Volcano's own screen and haptics &mdash; the Control panel always reads &deg;C, since the device reports temperature in &deg;C over BLE regardless.</p>
+      <p class="v-hint">These options change the Volcano itself.</p>
+
+      <h2 class="v-subhead">App</h2>
+      <div class="v-row">
+        <span class="v-rowlabel">Theme</span>
+        <div class="v-themes" id="v-themes" role="group" aria-label="Colour theme"></div>
+      </div>
+      <div class="v-row">
+        <span class="v-rowlabel">App units</span>
+        <div class="v-seg" id="v-appunits" role="group" aria-label="Temperature units shown in this app">
+          <button class="v-segbtn" type="button" data-unit="C" aria-pressed="true">&deg;C</button>
+          <button class="v-segbtn" type="button" data-unit="F" aria-pressed="false">&deg;F</button>
+        </div>
+        <span class="v-hint">Current, target, presets and progress. Saved in this browser.</span>
+      </div>
+      <div class="v-row">
+        <span class="v-rowlabel">Install</span>
+        <button id="v-install" class="v-btn" type="button" hidden>&#10515; Install app</button>
+        <span class="v-hint" id="v-install-note">Your browser's menu can install this as an app (Install app / Add to Home Screen).</span>
+      </div>
+      <p class="v-hint">App settings are saved in this browser and don't change the Volcano. It always works in &deg;C.</p>
     </div>
   </section>
 
@@ -213,7 +252,6 @@ desktop Chrome / Edge / Opera or Android Chrome.</p>
 <hr>
 
 <footer>
-  <p><button id="v-install" class="v-btn" type="button" hidden>&#10515; Install app</button></p>
   <p class="sub">BLE protocol reverse-engineered by
   <a href="https://github.com/SavageNL/home-assistant-volcano-hybrid" rel="noopener">SavageNL/home-assistant-volcano-hybrid</a> &middot;
   <a href="help.html" target="_blank" rel="noopener">Help / FAQ &amp; protocol notes</a>.
