@@ -140,6 +140,10 @@ Free and open-source, built and maintained in my own time. If it has been handy 
 <a href="https://buymeacoffee.com/magikh0e"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20weed&emoji=%F0%9F%8C%BF&slug=magikh0e&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me weed" height="42"></a>
 <a href="https://www.patreon.com/magikh0e"><img src="https://img.shields.io/badge/Patreon-magikh0e-F96854?style=for-the-badge&logo=patreon&logoColor=white" alt="Support on Patreon" height="42"></a>
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for what changed in each version. The version is shown in the app's footer.
+
 ## License
 
 [GPL-3.0-or-later](LICENSE) © 2026 magikh0e.

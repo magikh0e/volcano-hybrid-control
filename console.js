@@ -52,6 +52,7 @@
     "  run <name>            run a saved workflow",
     "  stop                  cancel a running script",
     "  clear                 wipe the screen",
+    "  version               app version",
     "",
     "scripts — chain with ';' to run in order:",
     "  heat on; wait 300; temp 220; wait 120; bag",
@@ -86,6 +87,7 @@
       case "": return Promise.resolve();
       case "help": case "?": HELP.forEach(function (l) { say(l, "v-term-dim"); }); return Promise.resolve();
       case "clear": out.innerHTML = ""; return Promise.resolve();
+      case "version": say("Volcano Hybrid Web App v" + ((V && V.version) || "?")); return Promise.resolve();
       case "echo": say(arg); return Promise.resolve();
       case "stop": if (!running) say("nothing running.", "v-term-dim"); return Promise.resolve();
       case "status": case "state": {

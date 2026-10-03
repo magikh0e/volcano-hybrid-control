@@ -73,6 +73,7 @@ EXCLUDES = [
     ".env.example",
     ".gitignore",
     "README.md",
+    "CHANGELOG.md",
     "__pycache__/",
     "*.pyc",
     ".DS_Store",
@@ -291,6 +292,20 @@ def stamp_sitemap():
     return True
 
 
+def check_version():
+    """Warn (not fail) if APP_VERSION has no CHANGELOG.md entry yet."""
+    try:
+        with open(os.path.join(ROOT, "volcano-ble.js"), encoding="utf-8") as f:
+            m = re.search(r'const APP_VERSION = "([^"]+)"', f.read())
+        with open(os.path.join(ROOT, "CHANGELOG.md"), encoding="utf-8") as f:
+            log = f.read()
+    except OSError as e:
+        print(f"  (version check skipped: {e})")
+        return
+    if m and f"## [{m.group(1)}]" not in log:
+        print(f"!! APP_VERSION {m.group(1)} has no '## [{m.group(1)}]' entry in CHANGELOG.md")
+
+
 def check_live():
     """Compare the live service-worker CACHE name against the local one."""
     print("\n== freshness check ==")
@@ -324,6 +339,7 @@ def main():
         print(f"== {SITEMAP}: lastmod dates updated from git (commit it) ==")
     if args.stamp_sitemap:
         return
+    check_version()
 
     load_dotenv(os.path.join(ROOT, ".env"))
     load_dotenv(SITE_ENV)

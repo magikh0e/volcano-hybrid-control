@@ -43,3 +43,16 @@ python tools/deploy.py             # rsync + Cloudflare purge + live check
 
 The script refuses to deploy if app files changed without a `CACHE` bump in
 `service-worker.js`, and stamps `sitemap.xml` dates from git on every run.
+
+## Releasing a version
+
+Changes collect under `## [Unreleased]` in `CHANGELOG.md` as they land. To release:
+
+1. Pick the number ([semver](https://semver.org/)): major for changes that break saved
+   workflows, minor for new features, patch for fixes and polish.
+2. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [x.y.z] - YYYY-MM-DD`, add a fresh empty
+   `## [Unreleased]` above it, and update the compare links at the bottom.
+3. Set `APP_VERSION` in `volcano-ble.js` to the same number, and bump `CACHE` in
+   `service-worker.js`.
+4. Commit, then tag and push: `git tag -a vx.y.z -m "vx.y.z" && git push origin vx.y.z`.
+5. Deploy. `tools/deploy.py` warns if `APP_VERSION` has no changelog entry.
