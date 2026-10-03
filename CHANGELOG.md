@@ -9,6 +9,19 @@ and polish. The version shown in the app footer comes from `APP_VERSION` in `vol
 
 ## [Unreleased]
 
+### Added
+
+- The screen stays on while a workflow or template runs, so a phone doesn't sleep and drop
+  the Bluetooth connection mid-session.
+- Sound and vibration cues: two beeps when it's time to fit a fresh bag, one when the bag is
+  full. Toggle with "🔔 Sound & vibration cues" on the Workflows tab.
+- "■ Stop & heat off" in the running banner, next to Stop.
+
+### Changed
+
+- The running banner says "Fit a fresh bag" during the wait before a fill, and "Filling bag"
+  while it fills.
+
 ## [1.0.0] - 2026-10-03
 
 ### Added

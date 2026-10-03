@@ -355,3 +355,6 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
   .v-wf-tplbtns { flex-direction: row; flex-wrap: wrap; gap: 0.4rem 0.8rem; }
   .v-wf-tplact { justify-content: flex-start; }
 }
+.v-wf-runbtns { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; flex: none; }
+.v-wf-cues { margin-left: auto; font-size: 0.85rem; }
+@media (max-width: 560px) { .v-wf-runbar { flex-direction: column; align-items: stretch; } .v-wf-runbtns { justify-content: flex-start; } .v-wf-cues { margin-left: 0; } }

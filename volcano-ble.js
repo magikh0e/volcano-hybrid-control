@@ -1079,6 +1079,7 @@
   let wfSeq = 1;
   let wfRunning = false, wfStop = false, wfRunId = null;
   let wfRunName = "", wfRunText = "";   // shown in the running banner
+  let wfStopHeat = false;               // "Stop & heat off" was pressed
 
   function loadWorkflows() {
     try {
@@ -1128,6 +1129,68 @@
   function sleep(ms) { return new Promise((res) => setTimeout(res, ms)); }
   function wfSetRun(txt) { wfRunText = txt; const el = $("v-wf-run"); if (el) el.textContent = txt; }
 
+  // ---- run helpers: keep the screen awake, bag cues ---------------------------
+  // A phone that sleeps mid-run can suspend the page and drop the BLE link, so a
+  // running workflow holds a screen wake lock (re-taken when the tab returns).
+  let wfWakeLock = null;
+  async function wfKeepAwake(on) {
+    try {
+      if (on) {
+        if (!wfWakeLock && navigator.wakeLock && document.visibilityState === "visible") {
+          wfWakeLock = await navigator.wakeLock.request("screen");
+          wfWakeLock.addEventListener("release", () => { wfWakeLock = null; });
+        }
+      } else if (wfWakeLock) {
+        const lock = wfWakeLock; wfWakeLock = null; await lock.release();
+      }
+    } catch (e) { wfWakeLock = null; }
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (wfRunning && document.visibilityState === "visible") wfKeepAwake(true);
+  });
+
+  // Beep (and vibrate where supported) when it's time to fit a bag and when it's full.
+  let wfCuesOn = true;
+  try { wfCuesOn = localStorage.getItem("volcano-cues") !== "0"; } catch (e) { /* ignore */ }
+  let wfAudio = null;
+  function wfPrepareAudio() {   // called from the Run click, so the browser allows sound
+    if (!wfCuesOn) return;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC && !wfAudio) wfAudio = new AC();
+      if (wfAudio && wfAudio.state === "suspended") wfAudio.resume();
+    } catch (e) { wfAudio = null; }
+  }
+  function wfBeep(times, ms) {
+    if (!wfCuesOn) return;
+    try {
+      if (navigator.vibrate) navigator.vibrate(times > 1 ? [150, 100, 150] : [400]);
+      if (!wfAudio) return;
+      const t0 = wfAudio.currentTime;
+      for (let k = 0; k < times; k++) {
+        const o = wfAudio.createOscillator(), g = wfAudio.createGain();
+        const at = t0 + k * (ms + 120) / 1000;
+        o.frequency.value = 880; o.connect(g); g.connect(wfAudio.destination);
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(0.25, at + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + ms / 1000);
+        o.start(at); o.stop(at + ms / 1000 + 0.02);
+      }
+    } catch (e) { /* no sound is fine */ }
+  }
+  const WF_FILL_MIN = 10;   // a blocking fan step this long is a bag fill
+  function wfIsFill(a) { return !!a && a.type === "fanOn" && (a.secs || 0) >= WF_FILL_MIN; }
+  // Is the pause at step i the window for fitting a bag? Yes if a fill follows
+  // before the next pause (short priming puffs in between are fine).
+  function wfFitsBag(actions, i) {
+    for (let j = i + 1; j < actions.length; j++) {
+      const a = actions[j];
+      if (wfIsFill(a)) return true;
+      if (a.type !== "fanOn" && a.type !== "setLED") return false;
+    }
+    return false;
+  }
+
   async function wfSleep(secs, label) {
     secs = Math.max(0, Math.round(secs));
     for (let r = secs; r > 0; r--) {
@@ -1169,8 +1232,10 @@
     if (wfRunning) return;
     if (!wf.actions || !wf.actions.length) { status("This workflow has no actions.", "warn"); return; }
     if (!confirm('Run "' + (wf.name || "workflow") + '"? It drives the heater and pump — don’t leave it unattended.')) return;
-    wfRunning = true; wfStop = false; wfRunId = wf.id;
+    wfRunning = true; wfStop = false; wfStopHeat = false; wfRunId = wf.id;
     wfRunName = wf.name || "workflow"; wfRunText = "Starting…";
+    wfPrepareAudio();
+    wfKeepAwake(true);
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }   // avoid GATT contention during the run
     renderWorkflows();
     let i = 0, guard = 0, paused = false;
@@ -1188,15 +1253,19 @@
             await write(HEAT_OFF, [0]); heatOn = false; setLed("v-heatled", false); i++; break;
           case "fanOn":
             await write(FAN_ON, [1]); fanOn = true; setLed("v-fanled", true);
-            await wfSleep(a.secs, "Fan");
+            await wfSleep(a.secs, wfIsFill(a) ? "Filling bag" : "Fan");
             await write(FAN_OFF, [0]); fanOn = false; setLed("v-fanled", false);
+            if (wfIsFill(a) && !wfStop) wfBeep(1, 450);   // bag full
             paused = true; i++; break;
           case "fanOnGlobal":
             await write(FAN_ON, [1]); fanOn = true; setLed("v-fanled", true);
             if (a.secs > 0) setTimeout(() => { write(FAN_OFF, [0]).catch(() => {}); fanOn = false; setLed("v-fanled", false); }, a.secs * 1000);
             i++; break;
-          case "wait":
-            await wfSleep(a.secs, "Wait"); paused = true; i++; break;
+          case "wait": {
+            const fit = wfFitsBag(wf.actions, i) && a.secs > 0;
+            if (fit) wfBeep(2, 150);
+            await wfSleep(a.secs, fit ? "Fit a fresh bag" : "Wait"); paused = true; i++; break;
+          }
           case "setLED":
             await writeU16(LED_BRIGHT, clampPct(a.pct)); i++; break;
           case "exitWhenTemp": {
@@ -1221,7 +1290,10 @@
               await setTargetTemp(set);
               await wfHeatTo(set);   // like Onyx: the hold starts once the rung is reached
             }
-            await wfSleep(w, "Hold " + (set != null ? set + " °C" : "")); paused = true; i++; break;
+            const fit = wfFitsBag(wf.actions, i) && w > 0;
+            if (fit && !wfStop) wfBeep(2, 150);
+            await wfSleep(w, fit ? "Fit a fresh bag" + (set != null ? " (" + set + " °C)" : "")
+              : "Hold " + (set != null ? set + " °C" : "")); paused = true; i++; break;
           }
           case "loop":
             if (!paused) throw new Error("a Loop with no Wait/Fan step would run forever — add a Wait");
@@ -1230,11 +1302,18 @@
         }
       }
       wfSetRun(wfStop ? "Stopped." : "Workflow complete.");
-      status(wfStop ? "Workflow stopped." : "Workflow complete.", "ok");
+      status(wfStop ? (wfStopHeat ? "Workflow stopped. Heater and fan off." : "Workflow stopped.") : "Workflow complete.", "ok");
     } catch (e) {
       wfSetRun("Error: " + (e.message || e));
       status("Workflow error: " + (e.message || e), "err");
     } finally {
+      if (wfStopHeat && svc) {
+        try {
+          await write(HEAT_OFF, [0]); heatOn = false; setLed("v-heatled", false);
+          await write(FAN_OFF, [0]); fanOn = false; setLed("v-fanled", false);
+        } catch (e) { status("Couldn't turn the heater off: " + (e.message || e), "err"); }
+      }
+      wfKeepAwake(false);
       wfRunning = false; wfRunId = null;
       if (svc && !pollTimer) pollTimer = setInterval(pollStatus, 2000);   // resume polling
       renderWorkflows();
@@ -1271,13 +1350,23 @@
       el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: wfCreate }, "+ New workflow"),
       el("button", { class: "v-btn" + (wfTplOpen ? " active" : ""), type: "button", "aria-expanded": wfTplOpen ? "true" : "false",
         onClick: () => { wfTplOpen = !wfTplOpen; renderWorkflows(); } }, "📋 Templates"),
-      el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: wfImport }, "Import")));
+      el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: wfImport }, "Import"),
+      el("label", { class: "v-check v-wf-cues", title: "Beep (and vibrate on phones) when it's time to fit a bag, and when it's full" },
+        el("input", { type: "checkbox", checked: wfCuesOn, onChange: (e) => {
+          wfCuesOn = e.target.checked;
+          try { localStorage.setItem("volcano-cues", wfCuesOn ? "1" : "0"); } catch (err) { /* ignore */ }
+          if (wfCuesOn) { wfPrepareAudio(); wfBeep(1, 120); }   // a sample beep
+        } }), " 🔔 Sound & vibration cues")));
     // Whatever is running (a saved workflow or a template) shows here, with Stop.
     if (wfRunning) box.append(el("div", { class: "v-wf-runbar", role: "status" },
       el("div", { class: "v-wf-runtext" },
         el("strong", null, "▶ Running: " + wfRunName),
         el("span", { class: "v-wf-run", id: "v-wf-run" }, wfRunText)),
-      el("button", { class: "v-btn v-wf-stop", type: "button", onClick: () => { wfStop = true; } }, "■ Stop")));
+      el("div", { class: "v-wf-runbtns" },
+        el("button", { class: "v-btn v-wf-stop", type: "button", title: "Stop here; leave the heater as it is",
+          onClick: () => { wfStop = true; } }, "■ Stop"),
+        el("button", { class: "v-btn v-wf-stop", type: "button", title: "Stop and turn the heater and fan off",
+          onClick: () => { wfStop = true; wfStopHeat = true; } }, "■ Stop & heat off"))));
     if (wfTplOpen) box.append(renderTemplates());
     box.append(el("h2", { class: "v-wf-mine" }, "My workflows" + (workflows.length ? " (" + workflows.length + ")" : "")));
     if (!workflows.length)
