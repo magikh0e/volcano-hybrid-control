@@ -334,3 +334,24 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 }
 
 /* Hide the live controls until connected is not required — JS toggles state. */
+
+/* Templates: ▶ Run + Save pairs, saved feedback, running banner, My workflows */
+.v-wf-tplact { display: flex; gap: 0.35rem; align-items: center; justify-content: flex-end; }
+.v-wf-tplact .v-mini { white-space: nowrap; }
+.v-wf-saved { color: var(--accent, #e08a3c); border-color: var(--accent, #e08a3c); }
+.v-wf-ladbtns { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.v-wf-runbar { position: sticky; top: 0.5rem; z-index: 5; display: flex; align-items: center; justify-content: space-between;
+  gap: 0.6rem; margin: 0.4rem 0 0.8rem; padding: 0.55rem 0.7rem; border: 1px solid var(--accent, #e08a3c);
+  border-radius: 8px; background: var(--panel, #0a140d); }
+.v-wf-runtext { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; overflow-wrap: anywhere; }
+.v-wf-runbar .v-wf-run { margin: 0; }
+.v-wf-mine { margin: 1.2rem 0 0.5rem; }
+@keyframes v-wf-flash { from { box-shadow: 0 0 0 3px var(--accent, #e08a3c); } to { box-shadow: 0 0 0 0 transparent; } }
+.v-wf-card.v-wf-flash { animation: v-wf-flash 1.8s ease-out; }
+@media (prefers-reduced-motion: reduce) { .v-wf-card.v-wf-flash { animation: none; outline: 2px solid var(--accent, #e08a3c); } }
+@media (max-width: 560px) {
+  /* Phones: buttons go under the description instead of squeezing it */
+  .v-wf-tpl { flex-direction: column; align-items: stretch; gap: 0.45rem; }
+  .v-wf-tplbtns { flex-direction: row; flex-wrap: wrap; gap: 0.4rem 0.8rem; }
+  .v-wf-tplact { justify-content: flex-start; }
+}

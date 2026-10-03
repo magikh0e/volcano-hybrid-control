@@ -940,23 +940,31 @@
       : "🛍 " + plural(n, "bag");
     return { ok: true, text: plural(n, "rung") + ": " + list + " · " + what + (down ? " · steps down, cooling between rungs" : "") };
   }
-  function wfAddLadder() {
+  // The builder's current ladder as a one-off template, or null if invalid.
+  function ladderAsTemplate() {
     const r = ladderTemps(ladderCfg);
-    if (r.error) { status(r.error, "warn"); return; }
+    if (r.error) { status(r.error, "warn"); return null; }
     const t = r.temps, mode = ladderCfg.mode === "whip" ? "whip" : "bag";
     const base = "Ladder " + t[0] + "→" + t[t.length - 1] + " °C" + (t.length > 2 ? " by " + Math.round(Number(ladderCfg.step)) : "");
-    const tpl = Object.assign(ladderTemplate(ladderCfg, t), { name: base });
-    wfAddTemplate(tpl, mode);
+    return { tpl: Object.assign(ladderTemplate(ladderCfg, t), { name: base }), mode: mode };
   }
+  function wfAddLadder() { const l = ladderAsTemplate(); if (l) wfAddTemplate(l.tpl, l.mode, "__ladder"); }
+  function wfRunLadder() { const l = ladderAsTemplate(); if (l) wfRunTemplate(l.tpl, l.mode); }
 
   function renderLadderBuilder() {
     const c = ladderCfg;
     const preview = el("p", { class: "v-wf-ladprev" });
-    const addBtn = el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: wfAddLadder }, "+ Add ladder");
+    const connected = document.body.classList.contains("v-connected");
+    const runBtn = el("button", { class: "v-btn", type: "button", onClick: wfRunLadder,
+      title: connected ? "Run this ladder now, without saving it" : "Connect to run" }, "▶ Run ladder");
+    const addBtn = el("button", { class: "v-btn", type: "button", onClick: wfAddLadder,
+      title: "Save a copy to My workflows, to edit or reuse" }, "+ Save ladder");
+    const saved = wfSavedLink("__ladder");
     const refresh = () => {
       const pv = ladderPreview(c);
       preview.textContent = pv.text;
       preview.classList.toggle("v-wf-laderr", !pv.ok);
+      runBtn.disabled = wfRunning || !pv.ok || !connected;
       addBtn.disabled = wfRunning || !pv.ok;
       saveLadderCfg();
     };
@@ -980,7 +988,7 @@
           ? field("hold", num("hold", { min: 0 }), "s each")
           : [field("time to fit bag", num("fit", { min: 0 }), "s"), field("fill", num("fill", { min: 1 }), "s")]),
       preview,
-      addBtn);
+      el("div", { class: "v-wf-ladbtns" }, runBtn, addBtn, saved));
     box.open = ladderOpen;
     box.addEventListener("toggle", () => { ladderOpen = box.open; });
     refresh();
@@ -994,17 +1002,41 @@
     "":      { label: "target or chamber",  short: "target/chamber" },
   };
 
-  function wfAddTemplate(t, mode) {
+  function tplName(t, mode) {
     const multi = !mode && tplBags(t) > 1 && !/bags/i.test(t.name);   // e.g. "Sampler (3 bags)"
-    const name = t.name + (mode ? WF_MODES[mode].suffix(t) : multi ? " (" + plural(tplBags(t), "bag") + ")" : "");
-    workflows.push({ id: wfNewId(), name: name, actions: sanitizeActions(tplActions(t, mode)) });
+    return t.name + (mode ? WF_MODES[mode].suffix(t) : multi ? " (" + plural(tplBags(t), "bag") + ")" : "");
+  }
+  // Templates saved this visit (row key -> workflow id), so their rows say "✓ Saved · Show".
+  const wfSaved = new Map();
+  function wfAddTemplate(t, mode, key) {
+    const name = tplName(t, mode), id = wfNewId();
+    workflows.push({ id: id, name: name, actions: sanitizeActions(tplActions(t, mode)) });
+    wfSaved.set(key || (t.name + "|" + (mode || "")), id);
     saveWorkflows(); renderWorkflows();
-    status('Added "' + name + '" to your workflows.', "ok");
+    status('Saved "' + name + '" to My workflows.', "ok");
+  }
+  // Run a template as-is, without saving a copy.
+  function wfRunTemplate(t, mode) {
+    const name = tplName(t, mode);
+    runWorkflow({ id: "tpl:" + name, name: name, actions: sanitizeActions(tplActions(t, mode)) });
+  }
+  // Scroll to a saved workflow's card and flash it.
+  function wfShowSaved(id) {
+    const card = document.querySelector('.v-wf-card[data-wf-id="' + CSS.escape(id) + '"]');
+    if (!card) { renderWorkflows(); return; }   // deleted since: the row falls back to "+ Save"
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.remove("v-wf-flash"); void card.offsetWidth; card.classList.add("v-wf-flash");
+  }
+  function wfSavedLink(key) {
+    const id = wfSaved.get(key);
+    if (!id || !workflows.some((w) => w.id === id)) return null;
+    return el("button", { class: "v-mini v-wf-saved", type: "button", title: "Show it in My workflows",
+      onClick: () => wfShowSaved(id) }, "✓ Saved · Show ↓");
   }
 
   function renderTemplates() {
     const box = el("div", { class: "v-wf-tpls" },
-      el("p", { class: "v-hint" }, "Ready-made workflows. Adding one copies it into your list below, where you can tweak it."),
+      el("p", { class: "v-hint" }, "Ready-made workflows. ▶ runs one straight away; + Save keeps an editable copy in My workflows below."),
       renderLadderBuilder());
     const count = (f) => WF_TEMPLATES.filter((t) => tplVisibleModes(t, f).length).length;
     box.append(el("div", { class: "v-wf-chips v-wf-filters", role: "group", "aria-label": "Filter templates" },
@@ -1012,6 +1044,7 @@
         "aria-pressed": wfTplFilter === f.k ? "true" : "false",
         onClick: () => { wfTplFilter = f.k; try { localStorage.setItem("volcano-tpl-filter", f.k); } catch (e) { /* ignore */ } renderWorkflows(); } },
         f.label + " (" + count(f.k) + ")"))));
+    const connected = document.body.classList.contains("v-connected");
     let group = null;
     WF_TEMPLATES.forEach((t) => {
       const modes = tplVisibleModes(t, wfTplFilter);
@@ -1025,9 +1058,15 @@
           el("span", { class: "v-wf-tplbadges" }, tplBadges(t, modes).map((b) => el("span", { class: "v-wf-badge" }, b))),
           el("span", { class: "v-wf-tpldesc" }, t.desc),
           note && el("span", { class: "v-wf-tpldesc v-wf-tplmodes" }, note)),
-        el("div", { class: "v-wf-tplbtns" }, modes.map((m) =>
-          el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: () => wfAddTemplate(t, m) },
-            m ? WF_MODES[m].btn(t) : tplBags(t) > 1 ? "+ " + plural(tplBags(t), "bag") : "+ Add")))));
+        el("div", { class: "v-wf-tplbtns" }, modes.map((m) => {
+          const key = t.name + "|" + (m || ""), n = tplBags(t, m);
+          const label = m === "whip" ? "Whip" : n > 1 ? plural(n, "bag") : "Run";
+          return el("div", { class: "v-wf-tplact" },
+            el("button", { class: "v-btn", type: "button", disabled: wfRunning || !connected,
+              title: connected ? "Run now, without saving a copy" : "Connect to run", onClick: () => wfRunTemplate(t, m) }, "▶ " + label),
+            wfSavedLink(key) || el("button", { class: "v-mini", type: "button", disabled: wfRunning,
+              title: "Save a copy to My workflows, to edit or reuse", onClick: () => wfAddTemplate(t, m, key) }, "+ Save"));
+        }))));
     });
     return box;
   }
@@ -1035,6 +1074,7 @@
   let workflows = [];
   let wfSeq = 1;
   let wfRunning = false, wfStop = false, wfRunId = null;
+  let wfRunName = "", wfRunText = "";   // shown in the running banner
 
   function loadWorkflows() {
     try {
@@ -1082,7 +1122,7 @@
   // ---- executor -------------------------------------------------------------
 
   function sleep(ms) { return new Promise((res) => setTimeout(res, ms)); }
-  function wfSetRun(txt) { const el = $("v-wf-run"); if (el) el.textContent = txt; }
+  function wfSetRun(txt) { wfRunText = txt; const el = $("v-wf-run"); if (el) el.textContent = txt; }
 
   async function wfSleep(secs, label) {
     secs = Math.max(0, Math.round(secs));
@@ -1126,6 +1166,7 @@
     if (!wf.actions || !wf.actions.length) { status("This workflow has no actions.", "warn"); return; }
     if (!confirm('Run "' + (wf.name || "workflow") + '"? It drives the heater and pump — don’t leave it unattended.')) return;
     wfRunning = true; wfStop = false; wfRunId = wf.id;
+    wfRunName = wf.name || "workflow"; wfRunText = "Starting…";
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }   // avoid GATT contention during the run
     renderWorkflows();
     let i = 0, guard = 0, paused = false;
@@ -1227,15 +1268,22 @@
       el("button", { class: "v-btn" + (wfTplOpen ? " active" : ""), type: "button", "aria-expanded": wfTplOpen ? "true" : "false",
         onClick: () => { wfTplOpen = !wfTplOpen; renderWorkflows(); } }, "📋 Templates"),
       el("button", { class: "v-btn", type: "button", disabled: wfRunning, onClick: wfImport }, "Import")));
+    // Whatever is running (a saved workflow or a template) shows here, with Stop.
+    if (wfRunning) box.append(el("div", { class: "v-wf-runbar", role: "status" },
+      el("div", { class: "v-wf-runtext" },
+        el("strong", null, "▶ Running: " + wfRunName),
+        el("span", { class: "v-wf-run", id: "v-wf-run" }, wfRunText)),
+      el("button", { class: "v-btn v-wf-stop", type: "button", onClick: () => { wfStop = true; } }, "■ Stop")));
     if (wfTplOpen) box.append(renderTemplates());
+    box.append(el("h2", { class: "v-wf-mine" }, "My workflows" + (workflows.length ? " (" + workflows.length + ")" : "")));
     if (!workflows.length)
-      box.append(el("p", { class: "v-hint" }, "No workflows yet. Start from a template, or create one to script a heat / fan / wait sequence."));
+      box.append(el("p", { class: "v-hint" }, "Nothing saved yet. Run or save a template" + (wfTplOpen ? " above" : " (📋 Templates)") + ", or start a + New workflow."));
     workflows.forEach((wf) => box.append(renderWorkflowCard(wf, connected)));
   }
 
   function renderWorkflowCard(wf, connected) {
     const running = wfRunning && wfRunId === wf.id;
-    const card = el("div", { class: "v-wf-card" + (running ? " running" : "") });
+    const card = el("div", { class: "v-wf-card" + (running ? " running" : ""), "data-wf-id": wf.id });
     card.append(el("div", { class: "v-wf-head" },
       el("input", { class: "v-wf-name", type: "text", value: wf.name || "", "aria-label": "Workflow name",
         disabled: wfRunning, onInput: (e) => { wf.name = e.target.value; saveWorkflows(); } }),
@@ -1247,7 +1295,6 @@
       el("button", { class: "v-mini", type: "button", disabled: wfRunning, title: "Export JSON", onClick: () => wfExport(wf) }, "⤓"),
       el("button", { class: "v-mini v-wf-del", type: "button", disabled: wfRunning, title: "Delete workflow",
         onClick: () => { if (confirm('Delete workflow "' + (wf.name || "") + '"?')) { workflows = workflows.filter((w) => w !== wf); saveWorkflows(); renderWorkflows(); } } }, "🗑")));
-    if (running) card.append(el("div", { class: "v-wf-run", id: "v-wf-run" }, "Starting…"));
     const list = el("div", { class: "v-wf-actions" });
     (wf.actions || []).forEach((a, ai) => list.append(renderActionRow(wf, a, ai)));
     card.append(list);
@@ -1440,6 +1487,7 @@
     showTarget();
     presets = loadPresets();
     workflows = loadWorkflows();
+    if (!workflows.length) wfTplOpen = true;   // nothing saved yet: templates are the place to start
     setConnected(false);   // also renders the presets + workflows
     const bind = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
     bind("v-connect", "click", connect);
