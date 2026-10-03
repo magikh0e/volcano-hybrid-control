@@ -42,7 +42,8 @@ python tools/deploy.py             # rsync + Cloudflare purge + live check
 ```
 
 The script refuses to deploy if app files changed without a `CACHE` bump in
-`service-worker.js`, and stamps `sitemap.xml` dates from git on every run.
+`service-worker.js`, and stamps `sitemap.xml` dates from git on every run. Before
+uploading it runs the smoke test (below); a failure stops the deploy.
 
 ## Releasing a version
 
@@ -56,6 +57,8 @@ Changes collect under `## [Unreleased]` in `CHANGELOG.md` as they land. To relea
    `service-worker.js`.
 4. Commit, then tag and push: `git tag -a vx.y.z -m "vx.y.z" && git push origin vx.y.z`.
 5. Deploy. `tools/deploy.py` warns if the version in `version.js` has no changelog entry.
+6. Publish the GitHub release with that version's changelog section as its notes:
+   `gh release create vx.y.z --verify-tag --title vx.y.z --notes-file notes.md`.
 
 ## Testing without a Volcano
 
@@ -65,3 +68,18 @@ repo locally (for example `python -m http.server 8765`) and open
 as usual; the console has `fakeVolcano.state`, `fakeVolcano.log` (every write),
 `fakeVolcano.drop()` to drop the link and `fakeVolcano.failReconnects(n)`. It only loads on
 localhost with `?fake`, and `tools/` is never deployed.
+
+## Smoke test
+
+`python tools/smoke.py` serves the repo on a spare local port and drives the app against the
+fake Volcano in headless Chrome: precache files served, Quick Bag run start to finish (write
+order, one fill, heat off, session history), a link dropped mid-run, every theme, °F units,
+button names, Backup, the Help contents and the 404 page, with no script errors. It needs
+Playwright and an installed Chrome:
+
+```bash
+pip install --user playwright
+```
+
+`--headed` shows the browser. `tools/deploy.py` runs it before every upload (skip with
+`--no-smoke`); without Playwright it warns and carries on.

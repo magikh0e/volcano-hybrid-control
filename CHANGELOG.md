@@ -9,6 +9,26 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-03
+
+### Added
+
+- While a session runs, the browser tab's title shows the current step and time (for example
+  "FILL 0:21 · Volcano"), so it can be followed from another tab.
+- Session history on the Workflows tab: each run's name, start time, length, bags filled and
+  how it ended. It's kept in this browser and included in backups; restoring merges it.
+- Duplicate (⧉) on each saved workflow, to make a variation without rebuilding it.
+- The Help page opens with a contents list of its sections and every FAQ entry. Links open
+  the entry, so a single answer can be shared.
+
+### Changed
+
+- Better contrast: dim text, inactive tabs and the drawing's status line are easier to read in
+  every theme, and the Light theme's orange and yellow are darker. All text now meets
+  WCAG AA (4.5:1).
+- Screen readers hear whether the drawing's HEAT and AIR buttons are on, and every icon-only
+  button (share, export, move, delete) has a name.
+
 ## [1.3.0] - 2026-10-03
 
 ### Added
@@ -138,7 +158,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.0.0...v1.1.0

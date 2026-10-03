@@ -27,6 +27,7 @@
 <meta name="theme-color" content="#0a0a0a">
 <script src="theme.js"></script>
 <script src="version.js"></script>
+<script src="help.js" defer></script>
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 </head>
 <body>
@@ -40,7 +41,42 @@
 </div>
 </header>
 
-<h2>Before you connect</h2>
+<nav class="v-toc" aria-label="On this page">
+  <div>
+    <h2 class="v-toc-h">On this page</h2>
+    <ul>
+      <li><a href="#before-you-connect">Before you connect</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="#temperature-guide">Temperature guide</a></li>
+      <li><a href="#console">Console</a></li>
+      <li><a href="#protocol-notes">Protocol notes</a></li>
+    </ul>
+  </div>
+  <div>
+    <h2 class="v-toc-h">FAQ</h2>
+    <ul class="v-toc-faq">
+      <li><a href="#faq-it-won-t-connect-or-no-device-shows-up">It won't connect, or no device shows up</a></li>
+      <li><a href="#faq-which-browsers-and-devices-work">Which browsers and devices work?</a></li>
+      <li><a href="#faq-does-it-work-over-the-internet-or-as-remote-cont">Does it work over the internet, or as remote control?</a></li>
+      <li><a href="#faq-do-i-need-an-app-or-account-where-s-my-data">Do I need an app or account? Where's my data?</a></li>
+      <li><a href="#faq-can-i-use-this-and-home-assistant-at-the-same-ti">Can I use this and Home Assistant at the same time?</a></li>
+      <li><a href="#faq-what-s-the-volcano-drawing-on-the-control-tab">What's the Volcano drawing on the Control tab?</a></li>
+      <li><a href="#faq-what-happens-if-the-connection-drops-during-a-se">What happens if the connection drops during a session?</a></li>
+      <li><a href="#faq-can-i-change-the-colours">Can I change the colours?</a></li>
+      <li><a href="#faq-how-do-i-see-f">How do I see &deg;F?</a></li>
+      <li><a href="#faq-where-did-run-ladder-go">Where did "Run ladder" go?</a></li>
+      <li><a href="#faq-what-are-workflows-and-what-does-each-action-do">What are Workflows, and what does each action do?</a></li>
+      <li><a href="#faq-are-there-ready-made-workflows">Are there ready-made workflows?</a></li>
+      <li><a href="#faq-can-i-share-a-workflow-with-someone">Can I share a workflow with someone?</a></li>
+      <li><a href="#faq-is-there-a-history-of-my-sessions">Is there a history of my sessions?</a></li>
+      <li><a href="#faq-it-disconnected-on-its-own-now-what">It disconnected on its own &mdash; now what?</a></li>
+      <li><a href="#faq-can-i-install-it-as-an-app">Can I install it as an app?</a></li>
+      <li><a href="#faq-is-it-safe">Is it safe?</a></li>
+    </ul>
+  </div>
+</nav>
+
+<h2 id="before-you-connect">Before you connect</h2>
 <pre>  &mdash; <strong>Chromium only.</strong> Desktop Chrome / Edge / Opera, or Android Chrome.
     No iOS, no Firefox, no Safari &mdash; they don't implement Web Bluetooth.
   &mdash; <strong>Secure context.</strong> Serve over HTTPS, or run it from http://localhost.
@@ -52,53 +88,53 @@
   &mdash; <strong>It's a 230&nbsp;&deg;C heater.</strong> The page clamps 40&ndash;230&nbsp;&deg;C and confirms
     before turning heat on, but don't walk away from a running unit.</pre>
 
-<h2>FAQ</h2>
+<h2 id="faq">FAQ</h2>
 <div class="v-faq">
-  <details>
+  <details id="faq-it-won-t-connect-or-no-device-shows-up">
     <summary>It won't connect, or no device shows up</summary>
     <p>The Volcano allows only one Bluetooth connection at a time. If Home Assistant or the Storz &amp; Bickel app is connected, disconnect it first. Also check that Bluetooth is on, the unit is powered, and you're within a few metres.</p>
   </details>
-  <details>
+  <details id="faq-which-browsers-and-devices-work">
     <summary>Which browsers and devices work?</summary>
     <p>Desktop Chrome, Edge, or Opera, and Chrome on Android. iOS, Firefox, and Safari don't implement Web Bluetooth, so they can't connect. The page must be served over HTTPS (localhost also works).</p>
   </details>
-  <details>
+  <details id="faq-does-it-work-over-the-internet-or-as-remote-cont">
     <summary>Does it work over the internet, or as remote control?</summary>
     <p>No &mdash; it's local only. The browser talks straight to the device over Bluetooth, so you have to be in range. Nothing is sent to any server.</p>
   </details>
-  <details>
+  <details id="faq-do-i-need-an-app-or-account-where-s-my-data">
     <summary>Do I need an app or account? Where's my data?</summary>
     <p>No app, no account, no backend. Your presets, workflows and preferences are stored in your browser and never leave your machine. Clearing the browser's site data, or switching phones, loses them, so keep a copy: on the Workflows tab, <strong>&#10515; Backup</strong> downloads every saved workflow and your presets as one file, and <strong>&#10514; Restore</strong> brings them back (it adds the workflows, skipping any you already have, and replaces the presets).</p>
   </details>
-  <details>
+  <details id="faq-can-i-use-this-and-home-assistant-at-the-same-ti">
     <summary>Can I use this and Home Assistant at the same time?</summary>
     <p>No &mdash; the Volcano accepts only one connection. Disconnect one to use the other.</p>
   </details>
-  <details>
+  <details id="faq-what-s-the-volcano-drawing-on-the-control-tab">
     <summary>What's the Volcano drawing on the Control tab?</summary>
     <p>A control panel laid out like the real one. The screen shows the current temperature (top) and the target (bottom), with a dot that lights while the heater is on. <strong>&minus;</strong> and <strong>+</strong> change the target and send it to the Volcano a moment after your last press (tap the screen to type an exact target); <strong>HEAT</strong> and <strong>AIR</strong> switch the heater and fan, lighting up while they're on. Below it, choose <strong>Bags</strong>, <strong>Whip</strong> or <strong>All</strong>, pick a saved workflow or template and press <strong>&#9654; Run</strong>; its progress and Stop buttons show right there.</p>
   </details>
-  <details>
+  <details id="faq-what-happens-if-the-connection-drops-during-a-se">
     <summary>What happens if the connection drops during a session?</summary>
     <p>The run pauses and the banner shows "Connection lost &mdash; reconnecting". It keeps trying for up to a minute, then carries on from the step it was on (a bag that was filling counts as done). If it can't reconnect, it stops with a warning: the app can't turn the heater off without a connection, so the Volcano's own auto-off timer takes over. Check the device.</p>
   </details>
-  <details>
+  <details id="faq-can-i-change-the-colours">
     <summary>Can I change the colours?</summary>
     <p>Yes. <strong>Settings &rarr; App &rarr; Theme</strong> has Amber (the default), Phosphor, Ice, Neon, Light and High contrast. The choice is saved in this browser and applies to the Help page too.</p>
   </details>
-  <details>
+  <details id="faq-how-do-i-see-f">
     <summary>How do I see &deg;F?</summary>
     <p>Settings has two switches. <strong>App units</strong> sets what this app shows: current and target temperature, presets and workflow progress. <strong>Device units</strong> sets the Volcano's own screen. The two are independent. Template names, the workflow editor and the ladder builder stay in &deg;C, which is what the Volcano works in.</p>
   </details>
-  <details>
+  <details id="faq-where-did-run-ladder-go">
     <summary>Where did "Run ladder" go?</summary>
     <p>It's now a template: <strong>Vapesuvius 5-min Ladder</strong> (Workflows &rarr; Templates, or the Control tab's dropdown under Whip). It steps 179&rarr;230&nbsp;&deg;C and holds each rung for 5&nbsp;minutes once reached. For a bag at every rung, run <strong>Vapesuvius Temp Step (8 bags)</strong>. The console's <code>ladder</code> command still runs the original timed ladder.</p>
   </details>
-  <details>
+  <details id="faq-what-are-workflows-and-what-does-each-action-do">
     <summary>What are Workflows, and what does each action do?</summary>
     <p>A small editor for scripting your own sequences. Action types: <strong>Heat On</strong> (optionally set a target), <strong>Heat Off</strong>, <strong>Fan On</strong> for N seconds (or "background", which doesn't block the next step), <strong>Wait</strong>, <strong>Set LED</strong>, <strong>Conditional Temp Set</strong>, <strong>Exit When Temp Reached</strong>, and <strong>Loop From Beginning</strong>. Conditional Temp Set is a temperature ladder stored as data. It reads the current target, matches it to a rung and moves up to the next one. It then waits for the chamber to get there, heating up or cooling down (if the chamber is well above it), before its hold timer starts. Exit When Temp Reached can compare against the <strong>target</strong> (as Project Onyx does), the <strong>chamber</strong> reading, or either one. Use target for looping ladders, so a hot start or a bag fill can't throw it off. Use chamber to wait until the chamber really gets there. Save as many workflows as you like and run them over the live connection. The action model is inspired by <a href="https://github.com/ImACoderImACoderImACoder/onyx" rel="noopener">Project Onyx</a>.</p>
   </details>
-  <details>
+  <details id="faq-are-there-ready-made-workflows">
     <summary>Are there ready-made workflows?</summary>
     <p>Yes. On the Workflows tab, click <strong>&#128203; Templates</strong>. Press <strong>&#9654;</strong> on one to run it straight away, or <strong>+ Save</strong> to keep an editable copy under <strong>My workflows</strong> (the row then shows <strong>&#10003; Saved &middot; Show</strong>, which jumps to it). While anything runs, a banner at the top shows its progress, with <strong>&#9632; Stop</strong> (leaves the heater as it is) and <strong>&#9632; Stop &amp; heat off</strong>. The screen stays on while something runs, so a phone doesn't sleep and drop the connection mid-session. With <strong>&#128276; Sound &amp; vibration cues</strong> ticked, it beeps (and vibrates on Android) when it's time to fit a fresh bag, and again when the bag is full. Every template runs start to finish on one press. It always starts at its first rung, and it turns the heat off at the end.</p>
     <p>Temperature ladders come in two versions, each with its own button:</p>
@@ -143,26 +179,30 @@
     <p><strong>&#129692; Build your own ladder:</strong> at the top of the Templates panel. Set a start, an end and a step (&deg;C), then choose Bags (with the time to fit each bag and the fill length) or Whip (with the hold at each rung). The preview lists every rung and the bag count; then <strong>&#9654; Run ladder</strong> runs it now, or <strong>+ Save ladder</strong> keeps it. If the step doesn't land exactly on the end, the end is still the last rung. Start above the end to step down; it waits for the chamber to cool between rungs.</p>
     <p>A template you save is an ordinary workflow, so you can edit it however you like. Starting a ladder with the chamber still hot from an earlier session means it waits for the chamber to cool to the first rung.</p>
   </details>
-  <details>
+  <details id="faq-can-i-share-a-workflow-with-someone">
     <summary>Can I share a workflow with someone?</summary>
     <p>Yes &mdash; on the Workflows tab, click <strong>&#128279;</strong> on a workflow to copy a <strong>share link</strong>. Whoever opens it is asked to import the workflow. It's encoded in the URL's <code>#</code> fragment, so nothing is uploaded &mdash; the whole workflow travels inside the link. You can also paste a share link (or exported JSON) into the <strong>Import</strong> button.</p>
   </details>
-  <details>
+  <details id="faq-is-there-a-history-of-my-sessions">
+    <summary>Is there a history of my sessions?</summary>
+    <p>Yes. On the Workflows tab, <strong>&#128220; Session history</strong> lists each workflow or template you've run: when, how long, how many bags, and whether it finished, was stopped or hit an error. It's stored in this browser (the latest 200) and included in <strong>&#10515; Backup</strong>. To tweak a saved workflow without losing the original, use <strong>&#10697;</strong> on its card to duplicate it.</p>
+  </details>
+  <details id="faq-it-disconnected-on-its-own-now-what">
     <summary>It disconnected on its own &mdash; now what?</summary>
     <p>Click <strong>Reconnect</strong> (it appears after a drop) to reconnect to the same unit without picking it again. If that fails, use Connect.</p>
   </details>
-  <details>
+  <details id="faq-can-i-install-it-as-an-app">
     <summary>Can I install it as an app?</summary>
     <p>Yes &mdash; it's a PWA. Your browser will offer to install it (or use <strong>Settings &rarr; App &rarr; Install app</strong>), and it works offline after the first load. The Bluetooth link still needs the device in range.</p>
   </details>
-  <details>
+  <details id="faq-is-it-safe">
     <summary>Is it safe?</summary>
     <p>It's a 230&nbsp;&deg;C heater. The page clamps the range to 40&ndash;230&nbsp;&deg;C and asks before turning heat on, and the device's own auto-off timer still applies &mdash; but don't walk away from a running unit.</p>
     <p>Nothing it does is permanent or irreversible. It only uses the Volcano's own Bluetooth controls &mdash; the same ones the device buttons and the Storz &amp; Bickel app use &mdash; so nothing is flashed, reset, or recalibrated. The device preferences on the Settings tab (units, cooling display, vibration, LED brightness, auto-off) are stored on the unit and stay as you leave them; you can switch any of them back at any time, here or on the device.</p>
   </details>
 </div>
 
-<h2>Temperature guide</h2>
+<h2 id="temperature-guide">Temperature guide</h2>
 <p class="sub">The Vapesuvius templates climb the eight <em>Vapesuvius</em>
 rungs (179&rarr;230&nbsp;&deg;C); as the target rises, progressively
 higher-boiling compounds come off. Roughly what volatilizes where &mdash; set a
@@ -199,7 +239,7 @@ ones &mdash; you leave more actives behind for the capsule. <strong>Comfort:</st
 above ~205&nbsp;&deg;C (rung&nbsp;5) the vapor runs warm; a waterpipe helps. Source:
 <em>Vapesuvius Temp Step Guide, 3rd&nbsp;ed.</em></p>
 
-<h2>Console</h2>
+<h2 id="console">Console</h2>
 <p class="sub">The <strong>Console</strong> tab is a command line for the Volcano. Type <code>help</code> for the list; chain commands with <code>;</code> to run them in sequence, or <code>run &lt;name&gt;</code> to run a workflow built on the Workflows tab.</p>
 <pre>  help                  list commands
   status                connection + temperature state
@@ -223,7 +263,7 @@ Scripts chain with ';' and run in order &mdash; a workflow from the command line
 
 Up / down arrows recall history, and everything the app does is logged here.</pre>
 
-<h2>Protocol notes</h2>
+<h2 id="protocol-notes">Protocol notes</h2>
 <pre>The GATT it uses, all under service <code>10110000-5354-4f52-5a26-4249434b454c</code>
 (the tail spells <code>STORZ&amp;BICKEL</code> in ASCII):
 

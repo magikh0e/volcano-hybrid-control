@@ -130,6 +130,7 @@
     const el = $(id);
     if (el) el.classList.toggle("on", !!on);
     (DEV_LIGHTS[id] || []).forEach((d) => { const n = $(d); if (n) n.classList.toggle("on", !!on); });
+    const btn = $(DEV_LIGHTS[id] ? DEV_LIGHTS[id][0] : ""); if (btn) btn.setAttribute("aria-pressed", on ? "true" : "false");
     devVisual();
   }
 
@@ -1202,8 +1203,10 @@
     if (/reconnecting/.test(t)) return "RECONNECTING";
     return "RUNNING";
   }
+  const BASE_TITLE = document.title;
   function wfSetRun(txt) {
     const ds = $("v-dev-step"); if (ds) ds.textContent = wfRunning ? devShortStep(txt) : "";
+    if (wfRunning) document.title = devShortStep(txt) + " · Volcano";   // progress visible from other tabs
     wfRunText = txt;
     ["v-wf-run", "v-dev-runtext"].forEach((id) => { const el = $(id); if (el) el.textContent = txt; });
   }
@@ -1338,6 +1341,8 @@
     if (!confirm('Run "' + (wf.name || "workflow") + '"? It drives the heater and pump — don’t leave it unattended.')) return;
     wfRunning = true; wfStop = false; wfStopHeat = false; wfRunId = wf.id;
     wfRunName = wf.name || "workflow"; wfRunText = "Starting…";
+    const runStarted = Date.now();
+    let runBags = 0, runOutcome = "complete";
     wfPrepareAudio();
     wfKeepAwake(true);
     // Status polling pauses during a run; keep the session line (runtime /
@@ -1363,7 +1368,7 @@
             await write(FAN_ON, [1]); fanOn = true; setLed("v-fanled", true);
             await wfSleep(a.secs, wfIsFill(a) ? "Filling bag" : "Fan");
             await write(FAN_OFF, [0]); fanOn = false; setLed("v-fanled", false);
-            if (wfIsFill(a) && !wfStop) wfBeep(1, 450);   // bag full
+            if (wfIsFill(a) && !wfStop) { wfBeep(1, 450); runBags++; }   // bag full
             paused = true; i++; break;
           case "fanOnGlobal":
             await write(FAN_ON, [1]); fanOn = true; setLed("v-fanled", true);
@@ -1418,13 +1423,16 @@
           // A fill cut short counts as done (turn the fan off); any other step runs again.
           if (a.type === "fanOn" || a.type === "fanOnGlobal") {
             try { await write(FAN_OFF, [0]); fanOn = false; setLed("v-fanled", false); } catch (err) { /* next step retries */ }
+            if (wfIsFill(a)) runBags++;
             paused = true; i++;
           }
         }
       }
+      if (wfStop) runOutcome = wfStopHeat ? "stopped, heat off" : "stopped";
       wfSetRun(wfStop ? "Stopped." : "Workflow complete.");
       status(wfStop ? (wfStopHeat ? "Workflow stopped. Heater and fan off." : "Workflow stopped.") : "Workflow complete.", "ok");
     } catch (e) {
+      runOutcome = "error";
       wfSetRun("Error: " + (e.message || e));
       status("Workflow error: " + (e.message || e), "err");
     } finally {
@@ -1436,6 +1444,9 @@
       }
       wfKeepAwake(false);
       clearInterval(sessTimer);
+      document.title = BASE_TITLE;
+      histAdd({ name: wfRunName, started: new Date(runStarted).toISOString(),
+        secs: Math.round((Date.now() - runStarted) / 1000), bags: runBags, outcome: runOutcome });
       wfRunning = false; wfRunId = null;
       if (svc && !pollTimer) pollTimer = setInterval(pollStatus, 2000);   // resume polling
       renderWorkflows();
@@ -1456,6 +1467,9 @@
       else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2).toLowerCase(), v);
       else if (v != null) n.setAttribute(k, v);
     }
+    // icon-only buttons (▲ 🗑 🔗 …) are named by their tooltip
+    if (tag === "button" && props && props.title && /\bv-mini\b/.test(props.class || "") && !n.hasAttribute("aria-label"))
+      n.setAttribute("aria-label", props.title);
     kids.flat().forEach((c) => { if (c != null && c !== false) n.append(c.nodeType ? c : document.createTextNode(String(c))); });
     return n;
   }
@@ -1590,6 +1604,7 @@
         el("button", { class: "v-btn v-wf-stop", type: "button", title: "Stop and turn the heater and fan off",
           onClick: () => { wfStop = true; wfStopHeat = true; } }, "■ Stop & heat off"))));
     if (wfTplOpen) box.append(renderTemplates());
+    box.append(renderHistory());
     box.append(el("h2", { class: "v-wf-mine" }, "My workflows" + (workflows.length ? " (" + workflows.length + ")" : "")));
     if (!workflows.length)
       box.append(el("p", { class: "v-hint" }, "Nothing saved yet. Run or save a template" + (wfTplOpen ? " above" : " (📋 Templates)") + ", or start a + New workflow."));
@@ -1606,6 +1621,8 @@
         ? el("button", { class: "v-btn v-wf-stop", type: "button", onClick: () => { wfStop = true; } }, "■ Stop")
         : el("button", { class: "v-btn", type: "button", disabled: !connected || wfRunning,
             title: connected ? "" : "Connect to run", onClick: () => runWorkflow(wf) }, "▶ Run"),
+      el("button", { class: "v-mini", type: "button", disabled: wfRunning, title: "Duplicate", "aria-label": "Duplicate " + (wf.name || "workflow"),
+        onClick: () => wfDuplicate(wf) }, "⧉"),
       el("button", { class: "v-mini", type: "button", disabled: wfRunning, title: "Copy share link", onClick: () => wfShare(wf) }, "🔗"),
       el("button", { class: "v-mini", type: "button", disabled: wfRunning, title: "Export JSON", onClick: () => wfExport(wf) }, "⤓"),
       el("button", { class: "v-mini v-wf-del", type: "button", disabled: wfRunning, title: "Delete workflow",
@@ -1691,11 +1708,43 @@
     return wrap;
   }
 
+  // ---- session sessLog: what ran, when, how long, how many bags (this browser) ----
+  const HIST_MAX = 200;
+  let sessLog = [];
+  try { const h = JSON.parse(localStorage.getItem("volcano-history") || "[]"); if (Array.isArray(h)) sessLog = h; } catch (e) { /* ignore */ }
+  let histOpen = false;
+  function histSave() { try { localStorage.setItem("volcano-history", JSON.stringify(sessLog)); } catch (e) { /* ignore */ } }
+  function histAdd(entry) { sessLog.unshift(entry); sessLog.length = Math.min(sessLog.length, HIST_MAX); histSave(); }
+  function histKey(h) { return (h.started || "") + "\u0000" + (h.name || ""); }
+  function renderHistory() {
+    const box = el("details", { class: "v-wf-history" },
+      el("summary", null, "📜 Session history" + (sessLog.length ? " (" + sessLog.length + ")" : "")));
+    box.open = histOpen;
+    box.addEventListener("toggle", () => { histOpen = box.open; });
+    if (!sessLog.length) {
+      box.append(el("p", { class: "v-hint" }, "Nothing yet. Each workflow or template you run is listed here, with how long it ran and how many bags it filled."));
+      return box;
+    }
+    const fmtWhen = (iso) => { const d = new Date(iso); return isNaN(d) ? "" :
+      d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) + " " +
+      d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }); };
+    const list = el("ol", { class: "v-hist" });
+    sessLog.slice(0, 30).forEach((h) => list.append(el("li", { class: "v-hist-row" + (h.outcome === "complete" ? "" : " v-hist-" + (h.outcome === "error" ? "err" : "stop")) },
+      el("span", { class: "v-hist-when" }, fmtWhen(h.started)),
+      el("span", { class: "v-hist-name" }, h.name || "workflow"),
+      el("span", { class: "v-hist-meta" }, fmtDur(h.secs || 0) + (h.bags ? " · " + plural(h.bags, "bag") : "") + " · " + (h.outcome || "")))));
+    box.append(list);
+    if (sessLog.length > 30) box.append(el("p", { class: "v-hint" }, "Showing the latest 30 of " + sessLog.length + "."));
+    box.append(el("button", { class: "v-btn v-wf-del", type: "button", disabled: wfRunning,
+      onClick: () => { if (confirm("Clear the session history in this browser?")) { sessLog = []; histSave(); renderWorkflows(); } } }, "Clear history"));
+    return box;
+  }
+
   // ---- backup / restore: every saved workflow plus the presets, as one file ----
   const BACKUP_APP = "volcano-hybrid-control";
   function wfBackup() {
     const data = { app: BACKUP_APP, version: APP_VERSION, exported: new Date().toISOString(),
-      workflows: workflows.map((w) => ({ name: w.name, actions: w.actions })), presets: presets.slice() };
+      workflows: workflows.map((w) => ({ name: w.name, actions: w.actions })), presets: presets.slice(), history: sessLog.slice() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -1720,19 +1769,36 @@
     const incoming = list.filter((w) => w && Array.isArray(w.actions))
       .map((w) => ({ name: w.name || "Restored workflow", actions: sanitizeActions(w.actions) }));
     const fresh = incoming.filter((w) => !have.has(key(w)));
+    const haveHist = new Set(sessLog.map(histKey));
+    const newHist = (data && Array.isArray(data.history) ? data.history : [])
+      .filter((h) => h && typeof h.started === "string" && !haveHist.has(histKey(h)))
+      .map((h) => ({ name: String(h.name || "workflow"), started: h.started, secs: Math.max(0, Number(h.secs) || 0),
+        bags: Math.max(0, Number(h.bags) || 0), outcome: String(h.outcome || "") }));
     let newPresets = data && Array.isArray(data.presets) ? sanitizePresets(data.presets) : null;
     if (newPresets && JSON.stringify(newPresets) === JSON.stringify(presets)) newPresets = null;   // already the same
     const msg = "Restore from " + file.name + "?\n\n" +
       "• Add " + plural(fresh.length, "workflow") + (incoming.length > fresh.length ? " (" + (incoming.length - fresh.length) + " already here, skipped)" : "") + "\n" +
       (newPresets && newPresets.length ? "• Replace your presets with the backup's " + newPresets.length + "\n" : "") +
+      (newHist.length ? "• Add " + plural(newHist.length, "history entry").replace("entrys", "entries") + "\n" : "") +
       "\nNothing else is removed.";
-    if (!fresh.length && !(newPresets && newPresets.length)) { status("Nothing new in that backup.", "ok"); return; }
+    if (!fresh.length && !(newPresets && newPresets.length) && !newHist.length) { status("Nothing new in that backup.", "ok"); return; }
     if (!confirm(msg)) return;
     fresh.forEach((w) => workflows.push({ id: wfNewId(), name: w.name, actions: w.actions }));
     saveWorkflows();
     if (newPresets && newPresets.length) { presets = newPresets; savePresets(); renderPresets(); }
+    if (newHist.length) {
+      sessLog = sessLog.concat(newHist).sort((a, b) => (b.started > a.started ? 1 : -1)).slice(0, HIST_MAX);
+      histSave();
+    }
     renderWorkflows();
     status("Restored " + plural(fresh.length, "workflow") + (newPresets && newPresets.length ? " and your presets" : "") + ".", "ok");
+  }
+
+  function wfDuplicate(wf) {
+    const copy = { id: wfNewId(), name: (wf.name || "Workflow") + " (copy)", actions: JSON.parse(JSON.stringify(wf.actions || [])) };
+    workflows.splice(workflows.indexOf(wf) + 1, 0, copy);
+    saveWorkflows(); renderWorkflows();
+    status('Duplicated "' + (wf.name || "workflow") + '".', "ok");
   }
 
   function wfCreate() {

@@ -12,6 +12,7 @@ Usage:
     python tools/deploy.py --skip-purge # rsync only
     python tools/deploy.py --check      # compare live service-worker CACHE to local
     python tools/deploy.py --no-sw-check  # deploy even if CACHE wasn't bumped
+    python tools/deploy.py --no-smoke     # skip the smoke test
 
 Configuration (environment, or .env at this repo root; anything not set
 there falls back to ../magikh0e-website/.env so the SSH + Cloudflare
@@ -29,6 +30,10 @@ settings don't have to be duplicated):
 
 Sitemap: every run first sets sitemap.xml's <lastmod> dates from git (the
 last commit touching each page, or today if it has uncommitted edits).
+
+Smoke test: before uploading, tools/smoke.py drives the app against the
+simulated Volcano in headless Chrome; any failure stops the deploy. Without
+Playwright (pip install --user playwright) it's skipped with a warning.
 
 Service-worker guard:
     service-worker.js is cache-first for every same-origin GET, so an
@@ -324,6 +329,18 @@ def check_live():
         print(f"  !! MISMATCH: local={local} live={live}")
 
 
+def smoke():
+    """Run tools/smoke.py; stop the deploy if it fails."""
+    print("\n== smoke test ==")
+    rc = subprocess.call([sys.executable, os.path.join(ROOT, "tools", "smoke.py")])
+    if rc == 3:
+        print("!! Playwright isn't installed -- smoke test skipped "
+              "(pip install --user playwright).", file=sys.stderr)
+    elif rc != 0:
+        print("\n!! Smoke test failed -- nothing uploaded. Fix it, or pass --no-smoke.", file=sys.stderr)
+        sys.exit(5)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="rsync dry-run; no upload, no purge")
@@ -331,6 +348,7 @@ def main():
     ap.add_argument("--check", action="store_true", help="only compare live vs local SW cache")
     ap.add_argument("--no-sw-check", action="store_true",
                     help="deploy even if files changed without a CACHE bump")
+    ap.add_argument("--no-smoke", action="store_true", help="skip tools/smoke.py before uploading")
     ap.add_argument("--stamp-sitemap", action="store_true",
                     help="only update sitemap.xml lastmod dates from git, then exit")
     args = ap.parse_args()
@@ -389,6 +407,9 @@ def main():
         print("\nNothing to deploy -- live already matches.")
         check_live()
         return
+
+    if not args.no_smoke:
+        smoke()
 
     sent, _ = parse_changes(rsync(host, port, key, remote_path, dry_run=False))
 

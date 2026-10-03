@@ -47,12 +47,12 @@
 }
 [data-theme="light"] {
   /* Light: for daylight */
-  --accent: #b35a00;  --on-accent: #ffffff;
+  --accent: #9a4c00;  --on-accent: #ffffff;
   --bg: #f6f4ef;      --panel: #ffffff;   --inset: #fbfaf7;  --term-bg: #fbfaf7;
   --edge: #d6d0c4;    --edge-soft: #e6e1d8; --edge-chip: #cfc6b6; --hover: #efe8dc;
   --text: #2a2a2a;
   --danger: #b00020;  --danger-strong: #d32f2f; --danger-bg: #fdecee; --danger-edge: #e6a0a8;
-  --warn: #8a6d00;    --warn-edge: #d9c27a; --ok: #2e7d32;
+  --warn: #7a5f00;    --warn-edge: #d9c27a; --ok: #2e7d32;
   --off-bg: #dddddd;  --off-edge: #bbbbbb;
   color-scheme: light;
 }
@@ -286,7 +286,7 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
   border: 1px solid var(--edge); border-radius: 6px; padding: 0.35rem 0.4rem;
 }
 .v-wf-params { display: inline-flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
-.v-wf-plabel { opacity: 0.7; font-size: 0.85rem; }
+.v-wf-plabel { opacity: 0.78; font-size: 0.85rem; }
 .v-wf-cond { display: flex; flex-direction: column; gap: 0.4rem; width: 100%; margin-top: 0.4rem; }
 .v-wf-condrow { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
 .v-wf-card .v-num { width: 4rem; }
@@ -349,7 +349,7 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
   color: var(--text); background: transparent;
   border: 1px solid transparent; border-bottom: none;
   border-radius: 6px 6px 0 0;
-  padding: 0.5rem 0.9rem; opacity: 0.65;
+  padding: 0.5rem 0.9rem; opacity: 0.78;
   text-decoration: none;
 }
 .v-tab:hover { opacity: 1; }
@@ -380,7 +380,7 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-term-ok   { color: var(--ok); }   /* terminal-green success */
 .v-term-err  { color: var(--danger); }
 .v-term-warn { color: var(--warn); }
-.v-term-dim  { opacity: 0.6; }
+.v-term-dim  { opacity: 0.75; }
 .v-term-sys  { color: var(--accent); opacity: 0.75; }
 .v-term-form {
   display: flex; align-items: baseline; gap: 0.4rem;
@@ -439,7 +439,7 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .vd-set { fill: var(--text); font: 600 22px ui-monospace, Consolas, monospace; }
 .vd-heatdot { fill: var(--off-bg); stroke: var(--off-edge); }
 .vd-heatdot.on { fill: var(--accent); stroke: var(--accent); }
-.vd-state { fill: var(--text); opacity: 0.6; font: 12px ui-monospace, Consolas, monospace; letter-spacing: 0.08em; }
+.vd-state { fill: var(--text); opacity: 0.78; font: 12px ui-monospace, Consolas, monospace; letter-spacing: 0.08em; }
 .vd-btn { cursor: pointer; outline: none; }
 .vd-btn rect { fill: transparent; stroke: var(--text); stroke-width: 1.5; transition: fill 0.15s; }
 .vd-btn text { fill: var(--text); font: 600 20px ui-monospace, Consolas, monospace; pointer-events: none; }
@@ -536,3 +536,26 @@ body:not(.v-connected) .v-session-line { display: none; }
 
 /* Phones: smaller console text so command listings keep their columns */
 @media (max-width: 480px) { .v-term { font-size: 0.72rem; } }
+
+/* Session history (Workflows tab) */
+.v-wf-history { margin: 1rem 0 0.2rem; }
+.v-wf-history > summary { cursor: pointer; font-weight: 600; }
+.v-hist { list-style: none; margin: 0.5rem 0; padding: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.v-hist-row { display: grid; grid-template-columns: 10.5rem 1fr auto; gap: 0.6rem; font-size: 0.85rem;
+  padding: 0.25rem 0.4rem; border-left: 3px solid var(--ok); background: var(--panel); }
+.v-hist-stop { border-left-color: var(--warn); }
+.v-hist-err { border-left-color: var(--danger-strong); }
+.v-hist-when { opacity: 0.75; }
+.v-hist-meta { opacity: 0.85; white-space: nowrap; }
+@media (max-width: 560px) { .v-hist-row { grid-template-columns: 1fr auto; } .v-hist-when { grid-column: 1 / -1; } }
+
+/* Help: "On this page" jump list */
+.v-toc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 0.4rem 2rem; margin: 0.6rem 0 1.4rem;
+  padding: 0.7rem 0.9rem; border: 1px solid var(--edge); border-radius: 8px; background: var(--panel); font-size: 0.85rem; }
+.v-toc .v-toc-h { font-size: 0.8rem; margin: 0 0 0.35rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.v-toc ul { margin: 0; padding-left: 1.1rem; }
+.v-toc li { margin: 0.12rem 0; }
+.v-toc-faq { columns: 2 16rem; column-gap: 1.6rem; }
+.v-toc-faq li { break-inside: avoid; }
+@media (max-width: 640px) { .v-toc { grid-template-columns: 1fr; } }
+:target { scroll-margin-top: 1rem; }
