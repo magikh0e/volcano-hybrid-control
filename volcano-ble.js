@@ -46,7 +46,7 @@
   const REG_SET = 0x10000;
 
   // App version: bump it with a CHANGELOG.md entry on each release (see deploy/README.md).
-  const APP_VERSION = "1.0.0";
+  const APP_VERSION = "1.1.0";
   const CHANGELOG_URL = "https://github.com/magikh0e/volcano-hybrid-control/blob/main/CHANGELOG.md";
 
   const MIN_T = 40, MAX_T = 230, STEP = 1;

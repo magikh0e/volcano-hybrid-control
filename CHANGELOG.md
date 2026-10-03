@@ -9,6 +9,8 @@ and polish. The version shown in the app footer comes from `APP_VERSION` in `vol
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-03
+
 ### Added
 
 - The screen stays on while a workflow or template runs, so a phone doesn't sleep and drop
@@ -88,5 +90,6 @@ and polish. The version shown in the app footer comes from `APP_VERSION` in `vol
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/magikh0e/volcano-hybrid-control/releases/tag/v1.0.0
