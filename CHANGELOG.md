@@ -9,6 +9,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-03
+
 ### Added
 
 - The Control tab's run dropdown has a 🛍 Bags / 💨 Whip / All switch; the list shows only the
@@ -121,6 +123,7 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/magikh0e/volcano-hybrid-control/releases/tag/v1.0.0
