@@ -76,7 +76,7 @@
   </details>
   <details>
     <summary>What's the Volcano drawing on the Control tab?</summary>
-    <p>A control panel laid out like the real one. The screen shows the current temperature (top) and the target (bottom), with a dot that lights while the heater is on. <strong>&minus;</strong> and <strong>+</strong> change the target and send it to the Volcano a moment after your last press; <strong>HEAT</strong> and <strong>AIR</strong> switch the heater and fan, lighting up while they're on. Below it, choose <strong>Bags</strong>, <strong>Whip</strong> or <strong>All</strong>, pick a saved workflow or template and press <strong>&#9654; Run</strong>; its progress and Stop buttons show right there.</p>
+    <p>A control panel laid out like the real one. The screen shows the current temperature (top) and the target (bottom), with a dot that lights while the heater is on. <strong>&minus;</strong> and <strong>+</strong> change the target and send it to the Volcano a moment after your last press (tap the screen to type an exact target); <strong>HEAT</strong> and <strong>AIR</strong> switch the heater and fan, lighting up while they're on. Below it, choose <strong>Bags</strong>, <strong>Whip</strong> or <strong>All</strong>, pick a saved workflow or template and press <strong>&#9654; Run</strong>; its progress and Stop buttons show right there.</p>
   </details>
   <details>
     <summary>What happens if the connection drops during a session?</summary>
@@ -91,9 +91,8 @@
     <p>Settings has two switches. <strong>App units</strong> sets what this app shows: current and target temperature, presets and workflow progress. <strong>Device units</strong> sets the Volcano's own screen. The two are independent. Template names, the workflow editor and the ladder builder stay in &deg;C, which is what the Volcano works in.</p>
   </details>
   <details>
-    <summary>What does "Run ladder" do?</summary>
-    <p>It turns the heater on and steps the target 179&rarr;230&nbsp;&deg;C, one rung every 5&nbsp;minutes (~35&nbsp;min) &mdash; the "Vapesuvius" full-spectrum session, with a live countdown. Press it again to stop.</p>
-    <p>Tick <strong>fill a bag at each rung</strong> to make it a hands-off bag session: at every rung it waits for the Volcano to actually reach that temperature, then fills one bag automatically (41&nbsp;s), leaving the rest of the 5&nbsp;minutes to enjoy it before the next step.</p>
+    <summary>Where did "Run ladder" go?</summary>
+    <p>It's now a template: <strong>Vapesuvius 5-min Ladder</strong> (Workflows &rarr; Templates, or the Control tab's dropdown under Whip). It steps 179&rarr;230&nbsp;&deg;C and holds each rung for 5&nbsp;minutes once reached. For a bag at every rung, run <strong>Vapesuvius Temp Step (8 bags)</strong>. The console's <code>ladder</code> command still runs the original timed ladder.</p>
   </details>
   <details>
     <summary>What are Workflows, and what does each action do?</summary>
@@ -164,7 +163,7 @@
 </div>
 
 <h2>Temperature guide</h2>
-<p class="sub"><strong>Run ladder</strong> climbs the eight <em>Vapesuvius</em>
+<p class="sub">The Vapesuvius templates climb the eight <em>Vapesuvius</em>
 rungs (179&rarr;230&nbsp;&deg;C); as the target rises, progressively
 higher-boiling compounds come off. Roughly what volatilizes where &mdash; set a
 target for the effect you want. These are compound <em>boiling points</em>; the
@@ -246,7 +245,7 @@ They change the Volcano's own display and buzzer, not this panel.
 Fill bag runs the pump for 41&nbsp;s with a countdown (standard S&amp;B Easy Valve) &mdash;
 heat to your target first, and give XL bags 75&ndash;100&nbsp;s.
 
-Run ladder turns heat on and walks 179&rarr;230&nbsp;&deg;C, one rung every 5&nbsp;min
+`ladder` turns heat on and walks 179&rarr;230&nbsp;&deg;C, one rung every 5&nbsp;min
 (~35&nbsp;min total) with a live countdown.</pre>
 
 <hr>

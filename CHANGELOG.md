@@ -21,11 +21,22 @@ and polish. The version shown in the app and on the Help page comes from `versio
   minute) and carries on from the interrupted step; a fill cut short counts as done. If it
   can't reconnect, it stops and says the heater may still be on.
 - The Control tab's run dropdown remembers the last profile picked.
+- The Volcano drawing shows a bag (Bags mode) or a whip hose (Whip mode) on top, with vapor
+  flowing while the fan runs; its panel pulses while heating and glows at temperature; and
+  during a run its screen shows the current step (FIT BAG 0:24, FILL 0:31, HEAT → 185 °C…).
+  Motion is replaced by static states for people who prefer reduced motion.
+- A small fan icon on the drawing's screen lights up and spins while the fan runs, opposite
+  the heater dot.
 - A "by magikh0e · source" line under the title on the app, Help and 404 pages.
 
 ### Changed
 
 - Shorter page heading: "Volcano Hybrid Web App".
+- Control tab: the Target, Heat, Fan and Bag rows are gone (the drawing covers them); tap the
+  drawing's screen to type an exact target. Fill bag sits under the run dropdown, with the
+  presets below it.
+- The Control tab's Run ladder is now the "Vapesuvius 5-min Ladder" template (5 minutes at
+  each rung once reached). The console's `ladder` command still runs the timed ladder.
 - The session line (runtime and auto-off countdown) moved from the Control tab to just under
   the connection status, so it shows on every tab while connected.
 

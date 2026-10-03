@@ -469,3 +469,50 @@ body:not(.v-connected) .v-session-line { display: none; }
 
 /* "by magikh0e · source" under the page title */
 .v-tagline { margin: -0.15rem 0 0.35rem; font-size: 0.8rem; opacity: 0.85; }
+
+/* Control tab: Fill bag under the run dropdown; tap the screen for an exact target */
+.v-dev-fill { width: 100%; margin-top: 0.5rem; }
+.vd-screenbtn { cursor: pointer; outline: none; }
+.vd-screenbtn:hover .vd-screen { stroke: var(--accent); }
+.vd-screenbtn:focus-visible .vd-screen { stroke: var(--accent); stroke-width: 3; }
+.vd-screenbtn[aria-disabled="true"] { cursor: default; }
+.vd-screenbtn[aria-disabled="true"]:hover .vd-screen { stroke: var(--edge); }
+
+/* Drawing: attachments, vapor, heating glow, step line */
+.vd-bag, .vd-whip { display: none; }
+.vd-mode-bag .vd-bag, .vd-mode-whip .vd-whip { display: inline; }
+.vd-bag-skin { fill: var(--accent); fill-opacity: 0.06; stroke: var(--edge-chip); stroke-width: 2; stroke-linejoin: round; }
+.vd-valve { fill: var(--panel); stroke: var(--edge); stroke-width: 2; }
+.vd-hose { fill: none; stroke: var(--edge-chip); stroke-width: 9; stroke-linecap: round; }
+.vd-hose-core { fill: none; stroke: var(--inset); stroke-width: 4; stroke-linecap: round; }
+.vd-mouth { fill: var(--panel); stroke: var(--edge); stroke-width: 2; }
+.vd-puffs { display: none; }
+.vd-puffs circle { fill: var(--accent); opacity: 0; }
+.vd-fan .vd-puffs { display: inline; }
+.vd-fan .vd-bag-skin { stroke: var(--accent); animation: vd-bag-fill 9s ease-out forwards; }
+.vd-fan .vd-hose-core { stroke: var(--accent); stroke-opacity: 0.35; }
+.vd-puffs-bag circle { animation: vd-rise 1.6s ease-out infinite; }
+.vd-puffs-bag circle:nth-child(2) { animation-delay: 0.55s; }
+.vd-puffs-bag circle:nth-child(3) { animation-delay: 1.1s; }
+.vd-puffs-whip circle { offset-path: path("M210 4 C 214 -60 300 -40 330 -112"); offset-rotate: 0deg; animation: vd-flow 1.5s linear infinite; }
+.vd-puffs-whip circle:nth-child(2) { animation-delay: 0.5s; }
+.vd-puffs-whip circle:nth-child(3) { animation-delay: 1s; }
+@keyframes vd-rise { 0% { transform: translateY(0); opacity: 0; } 20% { opacity: 0.8; } 100% { transform: translateY(-105px); opacity: 0; } }
+@keyframes vd-flow { 0% { offset-distance: 0%; opacity: 0; } 15% { opacity: 0.85; } 100% { offset-distance: 100%; opacity: 0; } }
+@keyframes vd-bag-fill { from { fill-opacity: 0.06; } to { fill-opacity: 0.3; } }
+.vd-heating .vd-panel { animation: vd-pulse 1.8s ease-in-out infinite; }
+.vd-ready .vd-panel { stroke: var(--accent); }
+@keyframes vd-pulse { 0%, 100% { stroke: var(--edge-chip); } 50% { stroke: var(--accent); } }
+.vd-step { fill: var(--accent); font: 600 10px ui-monospace, Consolas, monospace; letter-spacing: 0.06em; }
+@media (prefers-reduced-motion: reduce) {
+  .vd-heating .vd-panel { animation: none; stroke: var(--accent); stroke-dasharray: 6 6; }
+  .vd-puffs circle { animation: none; opacity: 0.6; }
+  .vd-fan .vd-bag-skin { animation: none; fill-opacity: 0.25; }
+}
+
+/* Fan glyph on the drawing's screen: dim when off, lit and spinning when on */
+.vd-fanicon { fill: var(--off-edge); }
+.vd-fanicon.on { fill: var(--accent); }
+.vd-fanicon.on .vd-fanblades { transform-box: fill-box; transform-origin: center; animation: vd-spin 0.9s linear infinite; }
+@keyframes vd-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .vd-fanicon.on .vd-fanblades { animation: none; } }

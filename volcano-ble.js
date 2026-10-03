@@ -101,7 +101,7 @@
     document.querySelectorAll(".v-segbtn").forEach((el) => { el.disabled = !on; });
     renderPresets();     // preset buttons follow connection state (unless editing)
     renderWorkflows();   // workflow Run buttons follow connection state (and the drawing's picker)
-    ["v-dev-minus", "v-dev-plus", "v-dev-heat", "v-dev-air"].forEach((id) => {
+    ["v-dev-minus", "v-dev-plus", "v-dev-heat", "v-dev-air", "v-dev-screen"].forEach((id) => {
       const n = $(id); if (n) n.setAttribute("aria-disabled", on ? "false" : "true");
     });
     const ds = $("v-dev-state"); if (ds) ds.textContent = on ? (device && device.name ? device.name : "connected") : "not connected";
@@ -113,11 +113,24 @@
     }
   }
 
-  const DEV_LIGHTS = { "v-heatled": ["v-dev-heat", "v-dev-heatdot"], "v-fanled": ["v-dev-air"] };
+  const DEV_LIGHTS = { "v-heatled": ["v-dev-heat", "v-dev-heatdot"], "v-fanled": ["v-dev-air", "v-dev-fanicon"] };
+  // The drawing's live state: attachment for the Bags/Whip switch, fan (vapor),
+  // heating (pulsing panel) and at temperature (steady glow).
+  function devVisual() {
+    const svg = $("v-dev-svg"); if (!svg) return;
+    const mode = typeof devMode === "string" ? devMode : "bag";
+    svg.classList.toggle("vd-mode-bag", mode === "bag");
+    svg.classList.toggle("vd-mode-whip", mode === "whip");
+    svg.classList.toggle("vd-fan", !!fanOn && !!svc);
+    const near = heatOn && curTemp != null && Math.abs(curTemp - target) <= 2;
+    svg.classList.toggle("vd-heating", !!heatOn && !!svc && !near);
+    svg.classList.toggle("vd-ready", !!near && !!svc);
+  }
   function setLed(id, on) {
     const el = $(id);
     if (el) el.classList.toggle("on", !!on);
     (DEV_LIGHTS[id] || []).forEach((d) => { const n = $(d); if (n) n.classList.toggle("on", !!on); });
+    devVisual();
   }
 
   // The device works in °C; the app can show °F. Only what's displayed is
@@ -132,10 +145,12 @@
   function showTarget() {
     const el = $("v-set");
     if (el) el.textContent = fmtT(target);
+    devVisual();
   }
   function showCurrent() {
     const c = $("v-cur");
     if (c) c.textContent = curTemp == null ? "---" : fmtT(curTemp);
+    devVisual();
   }
   function setAppUnits(f) {
     appF = !!f;
@@ -204,6 +219,7 @@
         fanOn = (reg & MASK_PUMP) !== 0;
         setLed("v-heatled", heatOn);
         setLed("v-fanled", fanOn);
+        devVisual();
         const hb = $("v-heat"), fb = $("v-fan");
         if (hb) hb.textContent = heatOn ? "⏻ Heat OFF" : "⏻ Heat ON";
         if (fb) fb.textContent = fanOn ? "⬚ Fan OFF" : "⬚ Fan ON";
@@ -832,6 +848,8 @@
       desc: "The full-spectrum Vapesuvius ladder: 179 → 185 → 191 → 199 → 205 → 211 → 217 → 230 °C." },
     { name: "Vapesuvius Temp Step ⏪", temps: VAPESUVIUS.slice().reverse(), whipSecs: 200,
       desc: "The same ladder from the top down, 230 → 179 °C. Each step down waits for the chamber to cool to the next rung." },
+    { group: "magikh0e created", name: "Vapesuvius 5-min Ladder", temps: VAPESUVIUS, modes: ["whip"], whipSecs: 300,
+      desc: "The full Vapesuvius ladder, 179 → 230 °C, holding each rung for 5 minutes once it's reached (about 45 minutes). For a bag at every rung, use Vapesuvius Temp Step (8 bags)." },
     { name: "Dosing Capsule Step", temps: CAPSULE, whipSecs: 200,
       desc: "Four rungs sized for a dosing capsule: 185 → 197 → 211 → 230 °C." },
     { name: "Dosing Capsule Step ⏪", temps: CAPSULE.slice().reverse(), whipSecs: 200,
@@ -1170,7 +1188,22 @@
   // ---- executor -------------------------------------------------------------
 
   function sleep(ms) { return new Promise((res) => setTimeout(res, ms)); }
+  // "Fit a fresh bag (185 °C) — 0:24" -> "FIT BAG 0:24" for the drawing's screen.
+  function devShortStep(txt) {
+    const t = String(txt || ""), time = (/(\d+:\d\d)\s*$/.exec(t) || [])[1] || "";
+    const to = (/to (\d+ °[CF])/.exec(t) || [])[1];
+    if (/^Fit a fresh bag/.test(t)) return "FIT BAG " + time;
+    if (/^Filling bag/.test(t)) return "FILL " + time;
+    if (/^Heating to/.test(t)) return "HEAT → " + (to || "");
+    if (/^Cooling to/.test(t)) return "COOL → " + (to || "");
+    if (/^Hold/.test(t)) return "HOLD " + time;
+    if (/^Wait/.test(t)) return "WAIT " + time;
+    if (/^Fan/.test(t)) return "FAN " + time;
+    if (/reconnecting/.test(t)) return "RECONNECTING";
+    return "RUNNING";
+  }
   function wfSetRun(txt) {
+    const ds = $("v-dev-step"); if (ds) ds.textContent = wfRunning ? devShortStep(txt) : "";
     wfRunText = txt;
     ["v-wf-run", "v-dev-runtext"].forEach((id) => { const el = $(id); if (el) el.textContent = txt; });
   }
@@ -1436,9 +1469,21 @@
     clearTimeout(devCommitTimer);
     devCommitTimer = setTimeout(() => { if (svc) commitTarget(); }, 600);
   }
+  function devExactTarget() {
+    const unit = appF ? "°F" : "°C";
+    const raw = prompt("Target temperature (" + unit + "):", appF ? cToF(target) : target);
+    if (raw == null || !String(raw).trim()) return;
+    const n = Math.round(Number(raw));
+    const c = appF ? fToC(n) : n;
+    if (!Number.isFinite(c) || c < MIN_T || c > MAX_T) {
+      status("Target must be " + fmtT(MIN_T) + "–" + fmtT(MAX_T) + ".", "warn"); return;
+    }
+    clearTimeout(devCommitTimer);
+    target = c; showTarget(); commitTarget();
+  }
   function bindDeviceButtons() {
     const act = { "v-dev-minus": () => devBump(-STEP), "v-dev-plus": () => devBump(STEP),
-      "v-dev-heat": () => toggleHeat(), "v-dev-air": () => toggleFan() };
+      "v-dev-heat": () => toggleHeat(), "v-dev-air": () => toggleFan(), "v-dev-screen": devExactTarget };
     Object.keys(act).forEach((id) => {
       const n = $(id); if (!n) return;
       const go = () => { if (n.getAttribute("aria-disabled") !== "true") act[id](); };
@@ -1475,6 +1520,8 @@
     return list;
   }
   function renderDevicePicker() {
+    devVisual();
+    if (!wfRunning) { const ds = $("v-dev-step"); if (ds) ds.textContent = ""; }
     const box = $("v-dev-run"); if (!box) return;
     box.textContent = "";
     const connected = document.body.classList.contains("v-connected");
