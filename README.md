@@ -12,12 +12,16 @@ framework, no dependencies; installable as a PWA and works offline.
 **Live:** [**volcano.magikh0e.pl**](https://volcano.magikh0e.pl/) — the standalone,
 installable app.
 
-The tabs — control, settings, the workflow editor, and the console:
+A session in progress on a laptop, with the drawing filling a bag on the left and the
+template library on the right:
 
-<img src="WebUIExample.png" alt="Control tab: connect, temperature readout and stepper, editable presets, heat/fan/bag controls" width="400">
-<img src="settingstab.png" alt="Settings tab: device info, auto-off timer, LED brightness, °C/°F units, cooling-display and vibration toggles" width="400">
-<img src="WorkFlowExample.png" alt="Workflows tab: the editor with a Conditional Temp Set if→then→wait ladder plus a Set LED Brightness action" width="420">
-<img src="ConsoleExample.png" alt="Console tab: a terminal REPL showing the help command listing the Volcano scripting language" width="420">
+<img src="assets/screenshots/session-wide.png" alt="Wide layout: the interactive Volcano drawing filling a bag (FILL 0:25 on its screen) beside the Workflows tab, with the running banner and template list" width="820">
+
+Settings with the theme picker, a whip session on a phone, and the console:
+
+<img src="assets/screenshots/settings-wide.png" alt="Settings: device options, theme picker (Amber, Phosphor, Ice, Neon, Light, High contrast), app units and install" width="520">
+<img src="assets/screenshots/control-narrow.png" alt="Phone: the Volcano drawing with a whip hose, vapor flowing, heating to 180 °C" width="200">
+<img src="assets/screenshots/console-narrow.png" alt="Phone: the console listing its commands and a status readout" width="200">
 
 ---
 

@@ -516,3 +516,23 @@ body:not(.v-connected) .v-session-line { display: none; }
 .vd-fanicon.on .vd-fanblades { transform-box: fill-box; transform-origin: center; animation: vd-spin 0.9s linear infinite; }
 @keyframes vd-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .vd-fanicon.on .vd-fanblades { animation: none; } }
+
+/* The drawing lives in <aside class="v-side"> just before the Control panel.
+   Narrow screens: shown only on the Control tab, above the presets. */
+@media (max-width: 999px) {
+  body:has(#panel-control[hidden]) .v-side { display: none; }
+}
+
+/* Wide screens: drawing in a sticky left column on every tab, tab content right. */
+@media (min-width: 1000px) {
+  body { max-width: 74rem; }
+  #v-panel { display: grid; grid-template-columns: minmax(0, 25rem) minmax(0, 1fr);
+    column-gap: 2.5rem; align-items: start; }
+  #v-panel > * { grid-column: 1 / -1; }
+  #v-panel > .v-side { grid-column: 1; position: sticky; top: 1rem; }
+  #v-panel > .v-tabpanel { grid-column: 2; }
+  .v-side .v-device { margin-top: 0.2rem; }
+}
+
+/* Phones: smaller console text so command listings keep their columns */
+@media (max-width: 480px) { .v-term { font-size: 0.72rem; } }

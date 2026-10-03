@@ -9,6 +9,19 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+### Added
+
+- Wide screens (1000 px and up): the Volcano drawing, its run dropdown and Fill bag sit in a
+  left column that stays in view on every tab, with the tab's content on the right.
+- New screenshots in the README and in the install dialog (wide ones for desktops, narrow ones
+  for phones).
+
+### Fixed
+
+- The session line now keeps counting during a workflow run (it froze while runs paused the
+  status polling).
+- Console text is a little smaller on phones, so command listings no longer wrap mid-column.
+
 ## [1.2.0] - 2026-10-03
 
 ### Added

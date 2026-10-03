@@ -1340,6 +1340,9 @@
     wfRunName = wf.name || "workflow"; wfRunText = "Starting…";
     wfPrepareAudio();
     wfKeepAwake(true);
+    // Status polling pauses during a run; keep the session line (runtime /
+    // auto-off countdown) moving on its own, lighter timer.
+    const sessTimer = setInterval(updateTimers, 5000); updateTimers();
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }   // avoid GATT contention during the run
     renderWorkflows();
     let i = 0, guard = 0, paused = false;
@@ -1432,6 +1435,7 @@
         } catch (e) { status("Couldn't turn the heater off: " + (e.message || e), "err"); }
       }
       wfKeepAwake(false);
+      clearInterval(sessTimer);
       wfRunning = false; wfRunId = null;
       if (svc && !pollTimer) pollTimer = setInterval(pollStatus, 2000);   // resume polling
       renderWorkflows();
