@@ -56,3 +56,12 @@ Changes collect under `## [Unreleased]` in `CHANGELOG.md` as they land. To relea
    `service-worker.js`.
 4. Commit, then tag and push: `git tag -a vx.y.z -m "vx.y.z" && git push origin vx.y.z`.
 5. Deploy. `tools/deploy.py` warns if the version in `version.js` has no changelog entry.
+
+## Testing without a Volcano
+
+`tools/fake-volcano.js` simulates a Volcano Hybrid over the same Bluetooth IDs. Serve the
+repo locally (for example `python -m http.server 8765`) and open
+`http://localhost:8765/?fake` (or `?fake=50` to run the app's timers 50x faster). Connect
+as usual; the console has `fakeVolcano.state`, `fakeVolcano.log` (every write),
+`fakeVolcano.drop()` to drop the link and `fakeVolcano.failReconnects(n)`. It only loads on
+localhost with `?fake`, and `tools/` is never deployed.

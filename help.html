@@ -35,6 +35,7 @@
 <img class="logo" src="logo.webp" width="144" height="144" alt="Volcano Hybrid Web App logo">
 <div class="site-head-text">
 <h1>Volcano Hybrid Web App: Help &amp; FAQ <a class="v-verbadge" data-app-version href="https://github.com/magikh0e/volcano-hybrid-control/blob/main/CHANGELOG.md" rel="noopener">changelog</a></h1>
+<p class="v-tagline">by <a href="https://magikh0e.pl/" rel="noopener">magikh0e</a> &middot; <a href="https://github.com/magikh0e/volcano-hybrid-control" rel="noopener">source</a></p>
 <p class="sub"><a href="./">&larr; back to the controller</a></p>
 </div>
 </header>
@@ -76,6 +77,10 @@
   <details>
     <summary>What's the Volcano drawing on the Control tab?</summary>
     <p>A control panel laid out like the real one. The screen shows the current temperature (top) and the target (bottom), with a dot that lights while the heater is on. <strong>&minus;</strong> and <strong>+</strong> change the target and send it to the Volcano a moment after your last press; <strong>HEAT</strong> and <strong>AIR</strong> switch the heater and fan, lighting up while they're on. Below it, choose <strong>Bags</strong>, <strong>Whip</strong> or <strong>All</strong>, pick a saved workflow or template and press <strong>&#9654; Run</strong>; its progress and Stop buttons show right there.</p>
+  </details>
+  <details>
+    <summary>What happens if the connection drops during a session?</summary>
+    <p>The run pauses and the banner shows "Connection lost &mdash; reconnecting". It keeps trying for up to a minute, then carries on from the step it was on (a bag that was filling counts as done). If it can't reconnect, it stops with a warning: the app can't turn the heater off without a connection, so the Volcano's own auto-off timer takes over. Check the device.</p>
   </details>
   <details>
     <summary>Can I change the colours?</summary>

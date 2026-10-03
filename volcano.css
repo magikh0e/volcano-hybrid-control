@@ -466,3 +466,6 @@ body:not(.v-connected) .v-session-line { display: none; }
   font-size: 0.7rem; font-weight: 600; letter-spacing: 0.02em; text-decoration: none; white-space: nowrap;
   border: 1px solid var(--accent); border-radius: 999px; color: var(--accent); }
 .v-verbadge:hover { background: var(--hover); }
+
+/* "by magikh0e · source" under the page title */
+.v-tagline { margin: -0.15rem 0 0.35rem; font-size: 0.8rem; opacity: 0.85; }

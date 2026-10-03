@@ -14,6 +14,14 @@
 (() => {
   "use strict";
 
+  // Development: on localhost, ?fake swaps in the simulated Volcano from
+  // tools/fake-volcano.js (tools/ is never deployed). ?fake=50 runs timers 50x.
+  if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && /[?&]fake\b/.test(location.search)) {
+    const fake = document.createElement("script");
+    fake.src = "tools/fake-volcano.js";
+    document.head.append(fake);
+  }
+
   const SVC      = "10110000-5354-4f52-5a26-4249434b454c"; // main control service
   const SVC3     = "10100000-5354-4f52-5a26-4249434b454c"; // status / register service
   const CUR_TEMP = "10110001-5354-4f52-5a26-4249434b454c"; // read/notify  uint16 LE / 10
@@ -365,7 +373,7 @@
   }
 
   function onDisconnected() {
-    wfStop = true;   // stop any running workflow
+    if (!wfRunning) wfStop = true;   // a running workflow reconnects instead (wfReconnect)
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     if (fillTimer) { clearInterval(fillTimer); fillTimer = null; }
     if (ladderTimer) { clearInterval(ladderTimer); ladderTimer = null; }
@@ -381,7 +389,7 @@
     server = svc = svc3 = curTempChar = setTempChar = prj1Char = prj2Char = null;
     shutOffMin = null;
     setConnected(false);
-    status("Disconnected.", "warn");
+    status(wfRunning ? "Connection lost — reconnecting…" : "Disconnected.", "warn");
   }
 
   async function connect() {
@@ -1230,10 +1238,33 @@
     return false;
   }
 
+  // ---- reconnect during a run ---------------------------------------------------
+  // A dropped link pauses the run: retry for up to WF_RECONNECT_MS, then resume
+  // at the step that was interrupted. Without a link the heater can't be turned
+  // off from here, so a failed reconnect says so and leaves it to the device's
+  // own auto-off.
+  const WF_RECONNECT_MS = 60 * 1000;
+  function wfLinkLost() { return !svc || !device || !device.gatt || !device.gatt.connected; }
+  async function wfReconnect() {
+    const started = Date.now();
+    for (let n = 1; !wfStop && Date.now() - started < WF_RECONNECT_MS; n++) {
+      wfSetRun("Connection lost — reconnecting (try " + n + ")…");
+      try {
+        await openDevice();
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }   // the run polls for itself
+        status("Reconnected — resuming.", "ok");
+        return true;
+      } catch (e) { /* try again */ }
+      await sleep(3000);
+    }
+    return false;
+  }
+
   async function wfSleep(secs, label) {
     secs = Math.max(0, Math.round(secs));
     for (let r = secs; r > 0; r--) {
       if (wfStop) return;
+      if (!svc) throw new Error("link lost");
       wfSetRun(label + " — " + fmtDur(r));
       await sleep(1000);
     }
@@ -1246,6 +1277,7 @@
   async function wfHeatTo(t) {
     const started = Date.now();
     while (!wfStop) {
+      if (!svc) throw new Error("link lost");
       const cur = await readCurrentTemp();
       if (cur != null) curTemp = cur;
       if (cur != null && cur >= t && cur <= t + WF_COOL_TOL) return;
@@ -1283,6 +1315,7 @@
         if (++guard > 100000) throw new Error("step limit exceeded");
         const a = wf.actions[i];
         wfSetRun("Step " + (i + 1) + "/" + wf.actions.length + " — " + wfDesc(a));
+        try {
         switch (a.type) {
           case "heatOn":
             await write(HEAT_ON, [1]); heatOn = true; setLed("v-heatled", true);
@@ -1338,6 +1371,19 @@
             if (!paused) throw new Error("a Loop with no Wait/Fan step would run forever — add a Wait");
             paused = false; i = 0; await sleep(50); break;
           default: i++;
+        }
+        } catch (e) {
+          if (wfStop || !wfLinkLost()) throw e;
+          if (!await wfReconnect()) {
+            if (wfStop) break;
+            throw new Error("lost the connection and couldn't reconnect within a minute. The heater may still be on: " +
+              "the Volcano's own auto-off will turn it off, but check the device.");
+          }
+          // A fill cut short counts as done (turn the fan off); any other step runs again.
+          if (a.type === "fanOn" || a.type === "fanOnGlobal") {
+            try { await write(FAN_OFF, [0]); fanOn = false; setLed("v-fanled", false); } catch (err) { /* next step retries */ }
+            paused = true; i++;
+          }
         }
       }
       wfSetRun(wfStop ? "Stopped." : "Workflow complete.");
@@ -1404,6 +1450,8 @@
   // Profile picker under the drawing: saved workflows, then templates, narrowed
   // to Bags, Whip or All.
   let devPick = "";
+  try { devPick = localStorage.getItem("volcano-dev-pick") || ""; } catch (e) { /* ignore */ }
+  function saveDevPick() { try { localStorage.setItem("volcano-dev-pick", devPick); } catch (e) { /* ignore */ } }
   let devMode = "bag";
   try { const m = localStorage.getItem("volcano-dev-mode"); if (m === "bag" || m === "whip" || m === "all") devMode = m; } catch (e) { /* ignore */ }
   // What a saved workflow does: fills bags, holds temperatures (whip), or neither.
@@ -1442,7 +1490,7 @@
     const profiles = devProfiles();
     if (!profiles.some((p) => p.key === devPick)) devPick = profiles.length ? profiles[0].key : "";
     const sel = el("select", { class: "v-wf-type v-dev-select", "aria-label": "Workflow or template to run",
-      onChange: (e) => { devPick = e.target.value; } });
+      onChange: (e) => { devPick = e.target.value; saveDevPick(); } });
     let group = null, og = null;
     profiles.forEach((p) => {
       if (p.group !== group) { group = p.group; og = el("optgroup", { label: group }); sel.append(og); }

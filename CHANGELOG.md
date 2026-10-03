@@ -17,8 +17,15 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - The app version shows as a badge next to the title on the app and Help pages, linking to
   this changelog.
 
+- A workflow or template that loses the Bluetooth link mid-run now reconnects (for up to a
+  minute) and carries on from the interrupted step; a fill cut short counts as done. If it
+  can't reconnect, it stops and says the heater may still be on.
+- The Control tab's run dropdown remembers the last profile picked.
+- A "by magikh0e · source" line under the title on the app, Help and 404 pages.
+
 ### Changed
 
+- Shorter page heading: "Volcano Hybrid Web App".
 - The session line (runtime and auto-off countdown) moved from the Control tab to just under
   the connection status, so it shows on every tab while connected.
 
