@@ -11,8 +11,6 @@ and polish. The version shown in the app footer comes from `APP_VERSION` in `vol
 
 ## [1.0.0] - 2026-10-03
 
-First numbered release. Everything below "Before 1.0.0" is what this version contains.
-
 ### Added
 
 - Version number in the app footer (with a link to this changelog) and a `version` console
@@ -20,8 +18,6 @@ First numbered release. Everything below "Before 1.0.0" is what this version con
 - This changelog.
 
 ## Before 1.0.0
-
-The app was live before it had version numbers. This history is reconstructed from the git log.
 
 ### 2026-10-01 to 2026-10-03
 
