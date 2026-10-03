@@ -755,11 +755,12 @@
   function tplBags(t, mode) { return t.temps ? (mode === "bag" ? t.temps.length : 0) : (t.bags || 0); }
   const WF_MODES = {
     bag:  { btn: (t) => "+ " + plural(tplBags(t, "bag"), "bag"), suffix: (t) => " (" + plural(tplBags(t, "bag"), "bag") + ")" },
-    whip: { btn: () => "+ Whip", suffix: () => " (whip)" },
+    whip: { btn: () => "+ Whip", suffix: (t) => /whip/i.test(t.name) ? "" : " (whip)" },
   };
   function tplBadges(t, modes) {
     return (modes || tplModes(t)).map((m) => {
       if (m === "whip") return "💨 whip · " + plural(t.temps.length, "rung") + " × " + fmtDur(t.whipSecs || WF_WHIP_HOLD);
+      if (!t.temps && tplKind(t) === "whip" && t.whipSecs) return "💨 whip · " + fmtDur(t.whipSecs);
       const n = tplBags(t, m);
       return n ? "🛍 " + plural(n, "bag") : null;
     }).filter(Boolean);
@@ -846,7 +847,21 @@
       bags: 3, actions: [180, 195, 210].flatMap((x) => [wfLadder([x], WF_BAG_FIT), fill(17)]).concat([{ type: "heatOff" }]) },
     { group: "magikh0e created", name: "Whip @ 195 °C",
       desc: "Holds 195 °C for 15 minutes of whip use, then turns the heat off, so a session can't run on forever.",
-      kind: "whip", actions: [wfLadder([195], 900), { type: "heatOff" }] },
+      kind: "whip", whipSecs: 900, actions: [wfLadder([195], 900), { type: "heatOff" }] },
+    { group: "magikh0e created", name: "Whip @ 185 °C",
+      desc: "A long, gentle hold: 185 °C for 20 minutes of whip use, then the heat turns off.",
+      kind: "whip", whipSecs: 1200, actions: [wfLadder([185], 1200), { type: "heatOff" }] },
+    { group: "magikh0e created", name: "Whip @ 205 °C",
+      desc: "A hotter, shorter hold: 205 °C for 10 minutes of whip use, then the heat turns off. The vapor is warm up here, so a waterpipe helps.",
+      kind: "whip", whipSecs: 600, actions: [wfLadder([205], 600), { type: "heatOff" }] },
+    { group: "magikh0e created", name: "Two-Stage Whip", temps: [190, 205], modes: ["whip"], whipSecs: 480,
+      desc: "Flavor first, then strength: 190 °C for 8 minutes, then 205 °C for 8 more. The heat turns off at the end." },
+    { group: "magikh0e created", name: "Whip Ramp", temps: [175, 180, 185, 190, 195, 200, 205, 210, 215], modes: ["whip"], whipSecs: 90,
+      desc: "Creeps up 5° every 90 seconds, 175 → 215 °C, so each pull is a little warmer than the last. About 15 minutes with heat-up." },
+    { group: "magikh0e created", name: "Long Whip Session", temps: [185, 195, 205, 215], modes: ["whip"], whipSecs: 360,
+      desc: "A full whip session in four steps, 185 → 215 °C, 6 minutes each (about 25 minutes)." },
+    { group: "magikh0e created", name: "Whip Wind-Down", temps: [215, 200, 185], modes: ["whip"], whipSecs: 300,
+      desc: "Starts hot and eases off: 215 → 200 → 185 °C, 5 minutes each. Each step down waits for the chamber to cool to the next rung." },
     { group: "magikh0e created", name: "Warm-up Hold",
       desc: "Heats to 185 °C and keeps it there for 10 minutes while you use the controls by hand, then turns the heat off.",
       actions: [wfLadder([185], 600), { type: "heatOff" }] },
