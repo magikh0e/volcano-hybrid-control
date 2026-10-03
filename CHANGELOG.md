@@ -5,7 +5,7 @@ All notable changes to the Volcano Hybrid Web App ([volcano.magikh0e.pl](https:/
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the app uses
 [Semantic Versioning](https://semver.org/): **major** for changes that break saved workflows or
 how the app is used, **minor** for new features (templates, tabs, settings), **patch** for fixes
-and polish. The version shown in the app footer comes from `APP_VERSION` in `volcano-ble.js`.
+and polish. The version shown in the app and on the Help page comes from `version.js`.
 
 ## [Unreleased]
 
@@ -13,6 +13,9 @@ and polish. The version shown in the app footer comes from `APP_VERSION` in `vol
 
 - The Control tab's run dropdown has a 🛍 Bags / 💨 Whip / All switch; the list shows only the
   matching templates and saved workflows. The choice is remembered.
+
+- The app version shows as a badge next to the title on the app and Help pages, linking to
+  this changelog.
 
 ### Changed
 

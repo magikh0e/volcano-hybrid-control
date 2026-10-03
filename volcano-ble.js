@@ -45,9 +45,8 @@
   // bit; write (REG_SET | mask) to SET it. Matches the HA integration exactly.
   const REG_SET = 0x10000;
 
-  // App version: bump it with a CHANGELOG.md entry on each release (see deploy/README.md).
-  const APP_VERSION = "1.1.0";
-  const CHANGELOG_URL = "https://github.com/magikh0e/volcano-hybrid-control/blob/main/CHANGELOG.md";
+  // App version, from version.js (shared with the Help page).
+  const APP_VERSION = window.VOLCANO_APP_VERSION || "dev";
 
   const MIN_T = 40, MAX_T = 230, STEP = 1;
   const FILL_SECS = 41;     // standard S&B Easy Valve bag fill (matches the HA script)
@@ -1745,8 +1744,6 @@
       const p = $("v-panel"); if (p) p.hidden = true;
       return;
     }
-    const ver = $("v-version");
-    if (ver) { ver.textContent = "v" + APP_VERSION; ver.title = "What's new in each version"; }
     showTarget();
     presets = loadPresets();
     workflows = loadWorkflows();

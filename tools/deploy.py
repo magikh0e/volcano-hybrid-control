@@ -293,17 +293,17 @@ def stamp_sitemap():
 
 
 def check_version():
-    """Warn (not fail) if APP_VERSION has no CHANGELOG.md entry yet."""
+    """Warn (not fail) if the version in version.js has no CHANGELOG.md entry yet."""
     try:
-        with open(os.path.join(ROOT, "volcano-ble.js"), encoding="utf-8") as f:
-            m = re.search(r'const APP_VERSION = "([^"]+)"', f.read())
+        with open(os.path.join(ROOT, "version.js"), encoding="utf-8") as f:
+            m = re.search(r'VOLCANO_APP_VERSION = "([^"]+)"', f.read())
         with open(os.path.join(ROOT, "CHANGELOG.md"), encoding="utf-8") as f:
             log = f.read()
     except OSError as e:
         print(f"  (version check skipped: {e})")
         return
     if m and f"## [{m.group(1)}]" not in log:
-        print(f"!! APP_VERSION {m.group(1)} has no '## [{m.group(1)}]' entry in CHANGELOG.md")
+        print(f"!! version.js says {m.group(1)}, which has no '## [{m.group(1)}]' entry in CHANGELOG.md")
 
 
 def check_live():

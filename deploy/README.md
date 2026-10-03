@@ -52,7 +52,7 @@ Changes collect under `## [Unreleased]` in `CHANGELOG.md` as they land. To relea
    workflows, minor for new features, patch for fixes and polish.
 2. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [x.y.z] - YYYY-MM-DD`, add a fresh empty
    `## [Unreleased]` above it, and update the compare links at the bottom.
-3. Set `APP_VERSION` in `volcano-ble.js` to the same number, and bump `CACHE` in
+3. Set `VOLCANO_APP_VERSION` in `version.js` to the same number, and bump `CACHE` in
    `service-worker.js`.
 4. Commit, then tag and push: `git tag -a vx.y.z -m "vx.y.z" && git push origin vx.y.z`.
-5. Deploy. `tools/deploy.py` warns if `APP_VERSION` has no changelog entry.
+5. Deploy. `tools/deploy.py` warns if the version in `version.js` has no changelog entry.
