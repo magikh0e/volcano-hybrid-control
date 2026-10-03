@@ -9,6 +9,16 @@ and polish. The version shown in the app footer comes from `APP_VERSION` in `vol
 
 ## [Unreleased]
 
+### Added
+
+- The Control tab's run dropdown has a 🛍 Bags / 💨 Whip / All switch; the list shows only the
+  matching templates and saved workflows. The choice is remembered.
+
+### Changed
+
+- The session line (runtime and auto-off countdown) moved from the Control tab to just under
+  the connection status, so it shows on every tab while connected.
+
 ## [1.1.0] - 2026-10-03
 
 ### Added

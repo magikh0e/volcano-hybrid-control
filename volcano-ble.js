@@ -1402,12 +1402,27 @@
     });
   }
 
-  // Profile picker under the drawing: saved workflows, then every template.
+  // Profile picker under the drawing: saved workflows, then templates, narrowed
+  // to Bags, Whip or All.
   let devPick = "";
+  let devMode = "bag";
+  try { const m = localStorage.getItem("volcano-dev-mode"); if (m === "bag" || m === "whip" || m === "all") devMode = m; } catch (e) { /* ignore */ }
+  // What a saved workflow does: fills bags, holds temperatures (whip), or neither.
+  function wfKindOf(actions) {
+    const a = actions || [];
+    if (a.some(wfIsFill)) return "bag";
+    if (a.some((x) => (x.type === "conditionalTemp" && x.def && x.def.wait >= 60) || (x.type === "wait" && x.secs >= 60))) return "whip";
+    return "other";
+  }
+  function devTemplateModes(t, mode) {
+    if (mode === "all") return tplModes(t);
+    if (mode === "whip") return tplVisibleModes(t, "whip");
+    return tplVisibleModes(t, "bag").concat(!t.temps && tplKind(t) === "single" ? [null] : []);
+  }
   function devProfiles() {
-    const list = workflows.map((w) => ({ key: "wf:" + w.id, group: "My workflows", label: w.name || "Untitled",
-      run: () => runWorkflow(w) }));
-    WF_TEMPLATES.forEach((t) => tplModes(t).forEach((m) => list.push({
+    const list = workflows.filter((w) => devMode === "all" || wfKindOf(w.actions) === devMode)
+      .map((w) => ({ key: "wf:" + w.id, group: "My workflows", label: w.name || "Untitled", run: () => runWorkflow(w) }));
+    WF_TEMPLATES.forEach((t) => devTemplateModes(t, devMode).forEach((m) => list.push({
       key: "tpl:" + t.name + "|" + (m || ""), group: "Templates · " + (t.group || "From Project Onyx"),
       label: tplName(t, m), run: () => wfRunTemplate(t, m) })));
     return list;
@@ -1434,6 +1449,11 @@
       if (p.group !== group) { group = p.group; og = el("optgroup", { label: group }); sel.append(og); }
       og.append(el("option", { value: p.key, selected: p.key === devPick }, p.label));
     });
+    const modeBtn = (m, label) => el("button", { class: "v-wf-chip" + (devMode === m ? " active" : ""), type: "button",
+      "aria-pressed": devMode === m ? "true" : "false",
+      onClick: () => { devMode = m; try { localStorage.setItem("volcano-dev-mode", m); } catch (e) { /* ignore */ } renderDevicePicker(); } }, label);
+    box.append(el("div", { class: "v-wf-chips v-dev-modes", role: "group", "aria-label": "Show bag or whip sessions" },
+      modeBtn("bag", "🛍 Bags"), modeBtn("whip", "💨 Whip"), modeBtn("all", "All")));
     box.append(el("div", { class: "v-dev-pick" }, sel,
       el("button", { class: "v-btn", type: "button", disabled: !connected || !profiles.length,
         title: connected ? "Run the selected workflow or template" : "Connect to run",

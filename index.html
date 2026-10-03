@@ -79,6 +79,7 @@ desktop Chrome / Edge / Opera or Android Chrome.</p>
 
   <p id="v-error" class="v-error" role="alert" hidden></p>
   <div id="v-status" aria-live="polite">Ready.</div>
+  <p class="v-session-line"><span class="v-session-label">Session</span> <span id="v-session">&mdash;</span></p>
 
   <nav class="v-tabs" role="tablist" aria-label="Sections">
     <button class="v-tab" type="button" data-tab="control" role="tab" id="tab-control" aria-controls="panel-control" aria-selected="true">Control</button>
@@ -117,11 +118,6 @@ desktop Chrome / Edge / Opera or Android Chrome.</p>
         <text class="vd-state" id="v-dev-state" x="210" y="300" text-anchor="middle">not connected</text>
       </svg>
       <div class="v-dev-run" id="v-dev-run"><!-- profile picker, rendered by volcano-ble.js --></div>
-    </div>
-
-    <div class="v-row">
-      <span class="v-rowlabel">Session</span>
-      <span class="v-hint" id="v-session">&mdash;</span>
     </div>
 
     <div class="v-row">

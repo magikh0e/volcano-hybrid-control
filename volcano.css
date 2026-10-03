@@ -454,3 +454,9 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-dev-pick { display: flex; gap: 0.4rem; }
 .v-dev-select { flex: 1; min-width: 0; }
 .v-dev-running { display: flex; flex-direction: column; gap: 0.15rem; overflow-wrap: anywhere; }
+.v-dev-modes { display: flex; }
+
+/* Session runtime / auto-off countdown, under the status line (only while connected) */
+.v-session-line { margin: -0.35rem 0 0.8rem; padding: 0 0.7rem; font-size: 0.85rem; opacity: 0.85; }
+.v-session-label { color: var(--accent); margin-right: 0.35rem; }
+body:not(.v-connected) .v-session-line { display: none; }
