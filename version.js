@@ -2,7 +2,7 @@
 // element (the title badge and footer link). Bump it with a CHANGELOG.md entry on
 // each release; see deploy/README.md.
 
-var VOLCANO_APP_VERSION = "1.2.0";
+var VOLCANO_APP_VERSION = "1.3.0";
 var VOLCANO_CHANGELOG_URL = "https://github.com/magikh0e/volcano-hybrid-control/blob/main/CHANGELOG.md";
 
 document.addEventListener("DOMContentLoaded", function () {
