@@ -2287,6 +2287,72 @@
     if (wtab) wtab.click();
   }
 
+  // ---- what's new: after an update, the changelog sections since the version last seen ----
+  const WHATSNEW_MAX = 3;   // releases shown in full; older ones are a link away
+  function semver(v) { return String(v).split(".").map((n) => parseInt(n, 10) || 0); }
+  function newer(a, b) { const x = semver(a), y = semver(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i]; return false; }
+  // `code` and **bold** inside a changelog line, as nodes (never as HTML).
+  function mdInline(text) {
+    const out = [];
+    text.split(/(`[^`]+`|\*\*[^*]+\*\*)/).forEach((part) => {
+      if (!part) return;
+      if (part[0] === "`") out.push(el("code", null, part.slice(1, -1)));
+      else if (part.startsWith("**")) out.push(el("strong", null, part.slice(2, -2)));
+      else out.push(part);
+    });
+    return out;
+  }
+  // "## [x.y.z] - date" sections, each with "### Added" style headings and "- " items.
+  function parseChangelog(md) {
+    const releases = [];
+    let rel = null, list = null, item = null;
+    md.split(/\r?\n/).forEach((line) => {
+      const h2 = /^## \[(\d+\.\d+\.\d+)\]/.exec(line);
+      if (h2) { rel = { version: h2[1], groups: [] }; releases.push(rel); list = item = null; return; }
+      if (/^## /.test(line) || /^\[.+\]: /.test(line)) { rel = null; return; }
+      if (!rel) return;
+      const h3 = /^### (.+)/.exec(line);
+      if (h3) { list = { title: h3[1].trim(), items: [] }; rel.groups.push(list); item = null; return; }
+      if (!list) return;
+      if (/^- /.test(line)) { item = line.slice(2).trim(); list.items.push(item); return; }
+      if (item != null && /^\s+\S/.test(line)) list.items[list.items.length - 1] += " " + line.trim();
+      else item = null;
+    });
+    return releases;
+  }
+  async function showWhatsNew() {
+    let seen = null;
+    try { seen = store.getItem("volcano-seen-version"); } catch (e) { /* ignore */ }
+    const markSeen = () => { try { store.setItem("volcano-seen-version", APP_VERSION); } catch (e) { /* ignore */ } };
+    if (!seen) { markSeen(); return; }            // first visit: nothing to compare with
+    if (!newer(APP_VERSION, seen)) { if (seen !== APP_VERSION) markSeen(); return; }
+    let releases;
+    try {
+      const res = await fetch("CHANGELOG.md", { cache: "no-cache" });
+      if (!res.ok) return;                         // try again next load
+      releases = parseChangelog(await res.text()).filter((r) => newer(r.version, seen) && !newer(r.version, APP_VERSION));
+    } catch (e) { return; }
+    if (!releases.length) { markSeen(); return; }
+    const shown = releases.slice(0, WHATSNEW_MAX);
+    const card = el("section", { class: "v-whatsnew", "aria-labelledby": "v-whatsnew-title" },
+      el("h2", { class: "v-whatsnew-title", id: "v-whatsnew-title" },
+        "What's new" + (releases.length > 1 ? " since v" + seen : " in v" + releases[0].version)));
+    shown.forEach((r) => {
+      if (releases.length > 1) card.append(el("h3", { class: "v-whatsnew-ver" }, "v" + r.version));
+      r.groups.forEach((g) => {
+        card.append(el("p", { class: "v-whatsnew-group" }, g.title));
+        card.append(el("ul", null, g.items.map((t) => el("li", null, mdInline(t)))));
+      });
+    });
+    const more = releases.length - shown.length;
+    card.append(el("p", { class: "v-whatsnew-foot" },
+      el("a", { href: typeof VOLCANO_CHANGELOG_URL === "string" ? VOLCANO_CHANGELOG_URL : "CHANGELOG.md", target: "_blank", rel: "noopener" },
+        more > 0 ? "…and " + plural(more, "earlier release") + " in the full changelog ↗" : "Full changelog ↗"),
+      el("button", { class: "v-btn", type: "button", onClick: () => { markSeen(); card.remove(); } }, "Got it")));
+    const panel = $("v-panel");
+    if (panel) panel.insertBefore(card, $("v-error"));
+  }
+
   function init() {
     if (!navigator.bluetooth) {
       const u = $("v-unsupported"); if (u) u.hidden = false;
@@ -2396,6 +2462,7 @@
       connect().then(() => { if (svc && !heatOn) toggleHeat(); });
     } else status("Ready. Click Connect and pick your Volcano.");
     setTimeout(importSharedWorkflow, 0);   // offer to import a #wf=… share link, if present
+    showWhatsNew();
   }
 
   // Command API for the standalone terminal (console.js). Only exposed when a

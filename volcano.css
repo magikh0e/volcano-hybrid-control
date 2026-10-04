@@ -617,3 +617,13 @@ body:not(.v-connected) .v-session-line { display: none; }
 /* Preset label field */
 .v-preset-label { width: 9rem; font: inherit; color: var(--text); background: var(--inset);
   border: 1px solid var(--edge); border-radius: 6px; padding: 0.35rem 0.5rem; }
+
+/* What's new, after an update */
+.v-whatsnew { margin: 0.7rem 0 0; padding: 0.6rem 0.9rem; border: 1px solid var(--accent); border-radius: 8px;
+  background: var(--panel); max-height: 22rem; overflow-y: auto; }
+.v-whatsnew-title { margin: 0 0 0.3rem; font-size: 1rem; color: var(--accent); }
+.v-whatsnew-ver { margin: 0.6rem 0 0.1rem; font-size: 0.9rem; color: var(--accent); }
+.v-whatsnew-group { margin: 0.4rem 0 0.1rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
+.v-whatsnew ul { margin: 0.1rem 0 0.3rem; padding-left: 1.2rem; }
+.v-whatsnew li { margin: 0.15rem 0; font-size: 0.9rem; }
+.v-whatsnew-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; flex-wrap: wrap; margin: 0.5rem 0 0; }

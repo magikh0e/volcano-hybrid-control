@@ -26,6 +26,8 @@ Checks:
   - deleting a workflow, an action or a preset happens at once and Undo
     (or Ctrl+Z) puts it back
   - ▲ / ▼ reorder saved workflows, keeping focus on the moved card
+  - "What's new" lists the changelog since the version last seen, closes for
+    good with Got it, and stays away on a first visit
   - the demo (?demo) connects itself to "Demo Volcano", heats at 5x, runs a
     session from its banner button, and keeps its data out of
     the real storage
@@ -382,6 +384,34 @@ class Smoke:
         self.check(page.locator("a[href='/']").count() > 0 or page.locator("a").count() > 0, "404 page loads")
         ctx.close()
 
+        # What's new: shown after an update, not on a first visit
+        ctx = browser.new_context(viewport={"width": 1280, "height": 800}, service_workers="block")
+        ctx.add_init_script(INIT + NO_BT + """if (!sessionStorage.getItem("seeded")) { sessionStorage.setItem("seeded", "1");
+          localStorage.setItem("volcano-seen-version", "2.0.0"); }""")
+        page = ctx.new_page(); self.watch(page)
+        page.goto(self.base + "/")
+        page.wait_for_selector(".v-whatsnew", timeout=10000)
+        card = page.evaluate("""() => { const c = document.querySelector('.v-whatsnew');
+          return { title: c.querySelector('h2').textContent, versions: [...c.querySelectorAll('h3')].map((h) => h.textContent),
+                   items: c.querySelectorAll('li').length, foot: c.querySelector('.v-whatsnew-foot a').textContent }; }""")
+        current = page.evaluate("VOLCANO_APP_VERSION")
+        self.check(card["title"] == "What's new since v2.0.0" and card["versions"][:1] == ["v" + current] and card["items"] > 3,
+                   f"What's new after an update: {card['title']}, {', '.join(card['versions'])}, {card['items']} items; {card['foot']}")
+        page.click(".v-whatsnew-foot .v-btn")
+        page.reload()
+        page.wait_for_timeout(800)
+        self.check(page.locator(".v-whatsnew").count() == 0 and page.evaluate("localStorage.getItem('volcano-seen-version')") == current,
+                   "Got it closes it for good")
+        ctx.close()
+        ctx = browser.new_context(viewport={"width": 1280, "height": 800}, service_workers="block")
+        ctx.add_init_script(INIT + NO_BT)
+        page = ctx.new_page(); self.watch(page)
+        page.goto(self.base + "/")
+        page.wait_for_timeout(1000)
+        self.check(page.locator(".v-whatsnew").count() == 0 and page.evaluate("localStorage.getItem('volcano-seen-version')") == current,
+                   "no What's new on a first visit")
+        ctx.close()
+
         # The public demo: own storage, simulated device
         ctx = browser.new_context(viewport={"width": 1280, "height": 800}, service_workers="block")
         ctx.add_init_script(INIT)
@@ -414,7 +444,8 @@ class Smoke:
         seed = """if (!sessionStorage.getItem("seeded")) { sessionStorage.setItem("seeded", "1");
           localStorage.setItem("volcano-history", JSON.stringify([{ name: "Quick Bag 185 °C", started: "2026-10-01T18:00:00Z",
             secs: 75, bags: 1, outcome: "stopped", rating: 3, note: "Quick one" }]));
-          localStorage.setItem("volcano-preset-labels", JSON.stringify({ 179: "Terps" })); }"""
+          localStorage.setItem("volcano-preset-labels", JSON.stringify({ 179: "Terps" }));
+          localStorage.setItem("volcano-seen-version", "2.0.0"); }"""   # the What's new card too
         ctx = browser.new_context(viewport={"width": 1280, "height": 800}, service_workers="block")
         ctx.add_init_script(INIT + seed)
         page = ctx.new_page(); self.watch(page)

@@ -78,7 +78,6 @@ EXCLUDES = [
     ".env.example",
     ".gitignore",
     "README.md",
-    "CHANGELOG.md",
     "__pycache__/",
     "*.pyc",
     ".DS_Store",
@@ -88,8 +87,9 @@ EXCLUDES = [
 ]
 
 SW_FILE = "service-worker.js"
-# Files only crawlers / link previews fetch, never the app: no CACHE bump needed.
-SW_EXEMPT = {"robots.txt", "sitemap.xml", "og.jpg", "404.html"}
+# Files the offline cache doesn't hold (crawlers, link previews, and CHANGELOG.md,
+# which the app fetches for its "What's new" card): no CACHE bump needed.
+SW_EXEMPT = {"robots.txt", "sitemap.xml", "og.jpg", "404.html", "CHANGELOG.md"}
 SITEMAP = "sitemap.xml"
 LOC_RE = re.compile(r"(<loc>([^<]+)</loc>\s*<lastmod>)([^<]*)(</lastmod>)")
 SW_CACHE_RE = re.compile(r'const\s+CACHE\s*=\s*"([^"]+)"')
