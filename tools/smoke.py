@@ -25,6 +25,7 @@ Checks:
   - saved workflows with duplicate ids get fresh ones on load
   - deleting a workflow, an action or a preset happens at once and Undo
     (or Ctrl+Z) puts it back
+  - ▲ / ▼ reorder saved workflows, keeping focus on the moved card
   - a Help contents link opens its FAQ entry
   - in the background, notifications say fit a bag, bag full, complete
   - a new version (served from a temporary copy of the site) shows the
@@ -212,6 +213,12 @@ class Smoke:
         page.evaluate("document.activeElement && document.activeElement.blur()")
         page.keyboard.press("Control+z")
         self.check(gone == "A:1 B:0" and page.evaluate(saved) == "A:1 B:1", "delete an action, then Ctrl+Z")
+        page.evaluate("[...document.querySelectorAll('.v-wf-card')].find((c) => c.querySelector('.v-wf-name').value === 'B').querySelector('.v-wf-up').click()")
+        order = page.evaluate(saved)
+        focus = page.evaluate("document.activeElement.getAttribute('aria-label')")
+        self.check(order == "B:1 A:1" and focus == "Move B down", f"▲ moves a workflow up ({order}; focus: {focus})")
+        page.keyboard.press("Enter")
+        self.check(page.evaluate(saved) == "A:1 B:1", "and ▼ (by keyboard) moves it back")
         page.click(".v-tab[data-tab='control']")
         page.click("#v-preset-edit")
         before = page.evaluate("[...document.querySelectorAll('#v-presets button[data-temp]')].map((b) => b.dataset.temp).join(',')")

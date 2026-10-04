@@ -1749,6 +1749,11 @@
         onClick: () => wfDuplicate(wf) }, "⧉"),
       el("button", { class: "v-mini", type: "button", disabled: wfRunning, title: "Copy share link", onClick: () => wfShare(wf) }, "🔗"),
       el("button", { class: "v-mini", type: "button", disabled: wfRunning, title: "Export JSON", onClick: () => wfExport(wf) }, "⤓"),
+      ...(workflows.length > 1 ? [
+        el("button", { class: "v-mini v-wf-up", type: "button", disabled: wfRunning || workflows.indexOf(wf) === 0,
+          title: "Move up", "aria-label": "Move " + (wf.name || "workflow") + " up", onClick: () => wfMove(wf, -1) }, "▲"),
+        el("button", { class: "v-mini v-wf-down", type: "button", disabled: wfRunning || workflows.indexOf(wf) === workflows.length - 1,
+          title: "Move down", "aria-label": "Move " + (wf.name || "workflow") + " down", onClick: () => wfMove(wf, 1) }, "▼")] : []),
       el("button", { class: "v-mini v-wf-del", type: "button", disabled: wfRunning, title: "Delete workflow",
         onClick: () => wfDelete(wf) }, "🗑")));
     const list = el("div", { class: "v-wf-actions" });
@@ -1965,6 +1970,21 @@
     }
     renderWorkflows();
     status("Restored " + plural(fresh.length, "workflow") + (newPresets && newPresets.length ? " and your presets" : "") + ".", "ok");
+  }
+
+  // Saved workflows are listed (here and in the drawing's dropdown) in this order.
+  function wfMove(wf, d) {
+    const i = workflows.indexOf(wf), j = i + d;
+    if (i < 0 || j < 0 || j >= workflows.length) return;
+    workflows[i] = workflows[j]; workflows[j] = wf;
+    saveWorkflows(); renderWorkflows();
+    // Keep the moved card in view and the focus on its arrow, so it can be moved again.
+    const card = document.querySelector('.v-wf-card[data-wf-id="' + CSS.escape(wf.id) + '"]');
+    if (!card) return;
+    card.scrollIntoView({ block: "nearest" });
+    const same = card.querySelector(d < 0 ? ".v-wf-up" : ".v-wf-down"), other = card.querySelector(d < 0 ? ".v-wf-down" : ".v-wf-up");
+    const b = same && !same.disabled ? same : other;
+    if (b) b.focus();
   }
 
   function wfDelete(wf) {

@@ -9,6 +9,13 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-10-04
+
+### Added
+
+- ▲ / ▼ on each saved workflow move it up or down in My workflows, which also sets its order
+  in the dropdown under the Volcano drawing.
+
 ## [1.8.0] - 2026-10-04
 
 ### Changed
@@ -202,7 +209,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.5.0...v1.6.0
