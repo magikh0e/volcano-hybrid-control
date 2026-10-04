@@ -1103,7 +1103,10 @@
   // Run a template as-is, without saving a copy.
   function wfRunTemplate(t, mode) {
     const name = tplName(t, mode);
-    runWorkflow({ id: "tpl:" + name, name: name, actions: sanitizeActions(tplActions(t, mode)) });
+    const actions = sanitizeActions(tplActions(t, mode));
+    // Built-in templates are found again by name; anything else (the ladder builder) keeps its steps.
+    const src = WF_TEMPLATES.includes(t) ? { tpl: t.name, mode: mode || null } : { actions: actions };
+    runWorkflow({ id: "tpl:" + name, name: name, actions: actions, src: src });
   }
   // Scroll to a saved workflow's card and flash it.
   function wfShowSaved(id) {
@@ -1174,7 +1177,13 @@
   function saveWorkflows() {
     try { localStorage.setItem("volcano-workflows", JSON.stringify(workflows)); } catch (e) { /* ignore */ }
   }
-  function wfNewId() { return "wf" + (wfSeq++) + "_" + Math.max(0, workflows.length); }
+  // Unique across reloads (a per-visit counter could repeat an id still saved from before).
+  function wfNewId() {
+    let id;
+    do { id = "wf" + Date.now().toString(36) + (wfSeq++).toString(36) + Math.random().toString(36).slice(2, 6); }
+    while (workflows.some((w) => w.id === id));
+    return id;
+  }
 
   function clampT(v) { v = Math.round(Number(v)); if (!Number.isFinite(v)) return MIN_T; return Math.min(MAX_T, Math.max(MIN_T, v)); }
   function clampSecs(v) { v = Math.round(Number(v)); return Number.isFinite(v) && v > 0 ? v : 0; }
@@ -1399,6 +1408,7 @@
     document.body.classList.add("v-running");
     wfRunName = wf.name || "workflow"; wfRunText = "Starting…";
     const runStarted = Date.now();
+    const runSrc = workflows.includes(wf) ? { wf: wf.id } : wf.src || { actions: wf.actions };
     let runBags = 0, runOutcome = "complete";
     wfPrepareAudio();
     wfKeepAwake(true);
@@ -1512,7 +1522,7 @@
       clearInterval(sessTimer);
       document.title = BASE_TITLE;
       histAdd({ name: wfRunName, started: new Date(runStarted).toISOString(),
-        secs: Math.round((Date.now() - runStarted) / 1000), bags: runBags, outcome: runOutcome });
+        secs: Math.round((Date.now() - runStarted) / 1000), bags: runBags, outcome: runOutcome, src: runSrc });
       wfRunning = false; wfRunId = null;
       document.body.classList.remove("v-running");
       if (svc && !pollTimer) pollTimer = setInterval(pollStatus, 2000);   // resume polling
@@ -1792,6 +1802,28 @@
   function histSave() { try { localStorage.setItem("volcano-history", JSON.stringify(sessLog)); } catch (e) { /* ignore */ } }
   function histAdd(entry) { sessLog.unshift(entry); sessLog.length = Math.min(sessLog.length, HIST_MAX); histSave(); }
   function histKey(h) { return (h.started || "") + "\u0000" + (h.name || ""); }
+  // What a history row ran, ready to run again: the saved workflow, the template
+  // (and mode), or the stored steps. Entries from before 1.7.0 are matched by name.
+  function histRunner(h) {
+    const s = h.src || {};
+    if (s.wf) { const w = workflows.find((x) => x.id === s.wf); if (w) return () => runWorkflow(w); }
+    if (s.tpl) { const t = WF_TEMPLATES.find((x) => x.name === s.tpl); if (t) return () => wfRunTemplate(t, s.mode || null); }
+    if (Array.isArray(s.actions) && s.actions.length) {
+      const actions = sanitizeActions(s.actions);
+      return () => runWorkflow({ id: "hist:" + h.started, name: h.name || "workflow", actions: actions, src: { actions: actions } });
+    }
+    const w = workflows.find((x) => x.name === h.name);
+    if (w) return () => runWorkflow(w);
+    for (const t of WF_TEMPLATES) for (const m of tplModes(t)) if (tplName(t, m) === h.name) return () => wfRunTemplate(t, m);
+    return null;
+  }
+  function histSrc(s) {   // a backup's src field, checked
+    if (!s || typeof s !== "object") return undefined;
+    if (typeof s.tpl === "string") return { tpl: s.tpl, mode: s.mode === "bag" || s.mode === "whip" ? s.mode : null };
+    if (Array.isArray(s.actions)) return { actions: sanitizeActions(s.actions) };
+    if (typeof s.wf === "string") return { wf: s.wf };
+    return undefined;
+  }
   function renderHistory() {
     const box = el("details", { class: "v-wf-history" },
       el("summary", null, "📜 Session history" + (sessLog.length ? " (" + sessLog.length + ")" : "")));
@@ -1805,10 +1837,17 @@
       d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) + " " +
       d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }); };
     const list = el("ol", { class: "v-hist" });
-    sessLog.slice(0, 30).forEach((h) => list.append(el("li", { class: "v-hist-row" + (h.outcome === "complete" ? "" : " v-hist-" + (h.outcome === "error" ? "err" : "stop")) },
-      el("span", { class: "v-hist-when" }, fmtWhen(h.started)),
-      el("span", { class: "v-hist-name" }, h.name || "workflow"),
-      el("span", { class: "v-hist-meta" }, fmtDur(h.secs || 0) + (h.bags ? " · " + plural(h.bags, "bag") : "") + " · " + (h.outcome || "")))));
+    const connected = document.body.classList.contains("v-connected");
+    sessLog.slice(0, 30).forEach((h) => {
+      const again = histRunner(h);
+      list.append(el("li", { class: "v-hist-row" + (h.outcome === "complete" ? "" : " v-hist-" + (h.outcome === "error" ? "err" : "stop")) },
+        el("span", { class: "v-hist-when" }, fmtWhen(h.started)),
+        el("span", { class: "v-hist-name" }, h.name || "workflow"),
+        el("span", { class: "v-hist-meta" }, fmtDur(h.secs || 0) + (h.bags ? " · " + plural(h.bags, "bag") : "") + " · " + (h.outcome || "")),
+        again ? el("button", { class: "v-mini v-hist-again", type: "button", disabled: wfRunning || !connected,
+          title: connected ? "Run again" : "Connect to run again", "aria-label": "Run " + (h.name || "workflow") + " again", onClick: again }, "↻")
+          : el("span", { class: "v-hist-gone", title: "No longer saved" }, "")));
+    });
     box.append(list);
     if (sessLog.length > 30) box.append(el("p", { class: "v-hint" }, "Showing the latest 30 of " + sessLog.length + "."));
     box.append(el("button", { class: "v-btn v-wf-del", type: "button", disabled: wfRunning,
@@ -1849,7 +1888,7 @@
     const newHist = (data && Array.isArray(data.history) ? data.history : [])
       .filter((h) => h && typeof h.started === "string" && !haveHist.has(histKey(h)))
       .map((h) => ({ name: String(h.name || "workflow"), started: h.started, secs: Math.max(0, Number(h.secs) || 0),
-        bags: Math.max(0, Number(h.bags) || 0), outcome: String(h.outcome || "") }));
+        bags: Math.max(0, Number(h.bags) || 0), outcome: String(h.outcome || ""), src: histSrc(h.src) }));
     const newFavs = (data && Array.isArray(data.favourites) ? data.favourites : [])
       .filter((n) => typeof n === "string" && !tplFavs.has(n) && WF_TEMPLATES.some((t) => t.name === n));
     let newPresets = data && Array.isArray(data.presets) ? sanitizePresets(data.presets) : null;
@@ -1992,6 +2031,11 @@
     showTarget();
     presets = loadPresets();
     workflows = loadWorkflows();
+    // Older saves could hold the same id twice (or none): give those a fresh one.
+    const seen = new Set();
+    let fixed = false;
+    workflows.forEach((w) => { if (!w.id || seen.has(w.id)) { w.id = wfNewId(); fixed = true; } seen.add(w.id); });
+    if (fixed) saveWorkflows();
     if (!workflows.length) wfTplOpen = true;   // nothing saved yet: templates are the place to start
     setConnected(false);   // also renders the presets + workflows
     const bind = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };

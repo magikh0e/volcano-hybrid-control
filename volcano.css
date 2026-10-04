@@ -550,13 +550,14 @@ body:not(.v-connected) .v-session-line { display: none; }
 .v-wf-history { margin: 1rem 0 0.2rem; }
 .v-wf-history > summary { cursor: pointer; font-weight: 600; }
 .v-hist { list-style: none; margin: 0.5rem 0; padding: 0; display: flex; flex-direction: column; gap: 0.25rem; }
-.v-hist-row { display: grid; grid-template-columns: 10.5rem 1fr auto; gap: 0.6rem; font-size: 0.85rem;
+.v-hist-row { display: grid; grid-template-columns: 10.5rem 1fr auto 2rem; gap: 0.6rem; align-items: center; font-size: 0.85rem;
   padding: 0.25rem 0.4rem; border-left: 3px solid var(--ok); background: var(--panel); }
 .v-hist-stop { border-left-color: var(--warn); }
 .v-hist-err { border-left-color: var(--danger-strong); }
 .v-hist-when { opacity: 0.75; }
 .v-hist-meta { opacity: 0.85; white-space: nowrap; }
-@media (max-width: 560px) { .v-hist-row { grid-template-columns: 1fr auto; } .v-hist-when { grid-column: 1 / -1; } }
+.v-hist-again { padding: 0.2rem 0.4rem; justify-self: end; }
+@media (max-width: 560px) { .v-hist-row { grid-template-columns: 1fr auto 2rem; } .v-hist-when { grid-column: 1 / -1; } }
 
 /* Help: "On this page" jump list */
 .v-toc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 0.4rem 2rem; margin: 0.6rem 0 1.4rem;

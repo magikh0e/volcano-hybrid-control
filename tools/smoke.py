@@ -21,6 +21,8 @@ Checks:
   - every theme applies, °F app units show on the drawing
   - a starred template leads the drawing's list and the Favourites filter
   - Backup downloads workflows, presets, history and favourites
+  - ↻ on a history row runs it again (also for entries saved without a source)
+  - saved workflows with duplicate ids get fresh ones on load
   - a Help contents link opens its FAQ entry
   - in the background, notifications say fit a bag, bag full, complete
   - a new version (served from a temporary copy of the site) shows the
@@ -162,6 +164,37 @@ class Smoke:
         self.check(not unnamed, "every visible button has a readable name" + (f" ({unnamed[:3]})" if unnamed else ""))
         self.check(all(k in data for k in ("workflows", "presets", "history")) and len(data["history"]) == 1
                    and data.get("favourites") == ["Quick Bag 185 °C"], "backup has workflows, presets, history and favourites")
+
+        # Run again from history: a recorded template, then an older entry with no source
+        page.evaluate("document.querySelector('.v-wf-history').open = true")
+        page.click(".v-hist-row .v-hist-again")
+        page.wait_for_function("() => JSON.parse(localStorage.getItem('volcano-history') || '[]').length === 2", timeout=60000)
+        h = self.history(page)
+        self.check(h[0]["name"] == "Quick Bag 185 °C" and h[0].get("src") == {"tpl": "Quick Bag 185 °C", "mode": None}
+                   and h[0]["outcome"] == "complete", f"↻ runs a history row again ({h[0].get('src')})")
+        page.evaluate("""() => { const h = JSON.parse(localStorage.getItem('volcano-history'));
+          delete h[0].src; localStorage.setItem('volcano-history', JSON.stringify(h)); }""")
+        page.reload()
+        page.wait_for_function("() => !!window.fakeVolcano")
+        page.click("#v-connect")
+        page.wait_for_function("() => document.body.classList.contains('v-connected')", timeout=10000)
+        page.evaluate("fakeVolcano.state.cur = 183")   # a fresh fake starts cold
+        page.click(".v-tab[data-tab='workflows']")
+        page.evaluate("document.querySelector('.v-wf-history').open = true")
+        page.click(".v-hist-row .v-hist-again")
+        page.wait_for_function("() => JSON.parse(localStorage.getItem('volcano-history') || '[]').length === 3", timeout=60000)
+        h = self.history(page)
+        self.check(h[0].get("src", {}).get("tpl") == "Quick Bag 185 °C", "an entry without a source is found by name and runs again")
+        ctx.close()
+
+        # Duplicate saved ids (from older versions) are repaired on load
+        ctx = context("""localStorage.setItem("volcano-workflows", JSON.stringify([
+          { id: "wf2_1", name: "A", actions: [{ type: "heatOff" }] },
+          { id: "wf2_1", name: "B", actions: [{ type: "heatOff" }] }]));""")
+        page = ctx.new_page(); self.watch(page)
+        page.goto(self.base + "/")
+        ids = page.evaluate("JSON.parse(localStorage.getItem('volcano-workflows')).map((w) => w.id)")
+        self.check(len(ids) == 2 and len(set(ids)) == 2, f"duplicate workflow ids repaired ({', '.join(ids)})")
         ctx.close()
 
         # Link drops mid-run: reconnect and finish. The page is "in the background"

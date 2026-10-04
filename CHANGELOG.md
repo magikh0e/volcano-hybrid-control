@@ -9,6 +9,19 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-10-04
+
+### Added
+
+- ↻ on each session history row runs that session again: the same saved workflow, the same
+  template and mode, or the same built ladder. Older history entries are matched by name.
+
+### Fixed
+
+- A new workflow could get the same internal id as one saved in an earlier visit, which could
+  mark the wrong card as running or run the wrong one from the dropdown. Duplicates in existing
+  saves are given new ids on load.
+
 ## [1.6.0] - 2026-10-04
 
 ### Added
@@ -181,7 +194,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.3.0...v1.4.0
