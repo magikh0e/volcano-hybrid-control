@@ -90,6 +90,9 @@
 
   const $ = (id) => document.getElementById(id);
 
+  // The "it drives the real heater" questions; the demo has no real heater.
+  function confirmReal(msg) { return DEMO || confirm(msg); }
+
   function status(msg, kind) {
     // Mirror every status message to the terminal, if one is listening
     // (console.js sets window.volcanoEcho). No-op on the site build.
@@ -772,7 +775,7 @@
   async function toggleHeat() {
     try {
       const next = !heatOn;
-      if (next && !confirm("Turn the heater ON? It will ramp to " + fmtT(target) + ".")) return;
+      if (next && !confirmReal("Turn the heater ON? It will ramp to " + fmtT(target) + ".")) return;
       await write(next ? HEAT_ON : HEAT_OFF, [next ? 1 : 0]);
       heatOn = next; setLed("v-heatled", next);   // now, so a quick second press toggles back
       status("Heater " + (next ? "ON" : "OFF") + ".", "ok");
@@ -900,7 +903,7 @@
   async function runLadder() {
     if (ladderTimer) { stopLadder("Ladder stopped.", "warn"); return; }
     const fillOn = !!($("v-ladder-fill") && $("v-ladder-fill").checked);
-    if (!confirm("Start the Vapesuvius ladder? Heat turns on and the target walks " +
+    if (!confirmReal("Start the Vapesuvius ladder? Heat turns on and the target walks " +
                  fmtT(LADDER[0]) + "→" + fmtT(LADDER[LADDER.length - 1]) + ", one rung every 5 min (~35 min)." +
                  (fillOn ? " A bag is filled automatically once each rung reaches temp." : ""))) return;
     try {
@@ -1568,7 +1571,7 @@
     if (!svc) { status("Connect first to run a workflow.", "warn"); return; }
     if (wfRunning) return;
     if (!wf.actions || !wf.actions.length) { status("This workflow has no actions.", "warn"); return; }
-    if (!confirm('Run "' + (wf.name || "workflow") + '"? It drives the heater and pump — don’t leave it unattended.')) return;
+    if (!confirmReal('Run "' + (wf.name || "workflow") + '"? It drives the heater and pump — don’t leave it unattended.')) return;
     wfRunning = true; wfStop = false; wfStopHeat = false; wfRunId = wf.id;
     document.body.classList.add("v-running");
     wfRunName = wf.name || "workflow"; wfRunText = "Starting…";
@@ -2363,7 +2366,7 @@
       document.body.classList.add("v-demo");
       const p = $("v-panel");
       // 1x / 5x / 20x: heating, holds and fills, so a whole session can be watched in minutes.
-      let demoSpeed = Number(store.getItem("volcano-demo-speed")) || 1;
+      let demoSpeed = Number(store.getItem("volcano-demo-speed")) || 5;
       const speeds = el("span", { class: "v-wf-chips v-demo-speed", role: "group", "aria-label": "Demo speed" });
       const setSpeed = (n) => {
         demoSpeed = n;
@@ -2376,13 +2379,21 @@
       };
       [1, 5, 20].forEach((n) => speeds.append(el("button", { class: "v-wf-chip", type: "button", "data-speed": String(n),
         title: n === 1 ? "Real time" : n + " times faster", onClick: () => setSpeed(n) }, n + "×")));
-      setSpeed([1, 5, 20].includes(demoSpeed) ? demoSpeed : 1);
+      setSpeed([1, 5, 20].includes(demoSpeed) ? demoSpeed : 5);
+      const sampler = WF_TEMPLATES.find((t) => t.name === "Sampler");
+      const tryRun = el("button", { class: "v-btn v-demo-run", type: "button", onClick: () => {
+        if (wfRunning) { status("A session is already running; Stop is under the drawing.", "warn"); return; }
+        if (!svc) { status("Connecting to the simulated Volcano…"); return; }
+        wfRunTemplate(sampler, null);
+        const side = $("v-side"); if (side) side.scrollIntoView({ behavior: "smooth", block: "start" });
+      } }, "▶ Run a 3-bag session");
       if (p) p.prepend(el("p", { class: "v-demo-bar", role: "note" },
         el("strong", null, "Demo:"), " a simulated Volcano. Nothing here talks to a real device, and what you save stays in this tab. ",
         el("a", { href: location.pathname }, "Exit demo"),
-        el("span", { class: "v-demo-speedrow" }, "Speed ", speeds)));
+        el("span", { class: "v-demo-speedrow" }, "Speed ", speeds), sampler ? tryRun : null));
       status("Demo: connecting to the simulated Volcano…");
-      connect();   // no device picker in the demo, so it starts connected
+      // No device picker in the demo: connect, and start heating so it's alive from the first second.
+      connect().then(() => { if (svc && !heatOn) toggleHeat(); });
     } else status("Ready. Click Connect and pick your Volcano.");
     setTimeout(importSharedWorkflow, 0);   // offer to import a #wf=… share link, if present
   }

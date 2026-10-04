@@ -1,11 +1,13 @@
 // service-worker.js — offline app shell for the Volcano control PWA.
 //
-// Cache-first for same-origin GETs so the panel loads instantly and works
-// offline (the Web Bluetooth link itself still needs the device in range —
-// only the UI is cached, not the BLE session). Bump CACHE on any asset change
-// to invalidate the old shell.
+// Network first for same-origin GETs, so every load online gets the current
+// version; the cache is the fallback when offline or when the network takes
+// longer than NET_WAIT_MS (the Web Bluetooth link itself still needs the
+// device in range; only the UI is cached, not the BLE session). Bump CACHE on
+// any asset change so the offline copy is refreshed too.
 
-const CACHE = "volcano-hybrid-control-v64";
+const CACHE = "volcano-hybrid-control-v65";
+const NET_WAIT_MS = 4000;
 const ASSETS = [
   "./",
   "./index.html",
@@ -58,17 +60,28 @@ self.addEventListener("notificationclick", (event) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET" || new URL(req.url).origin !== self.location.origin) return;
-  // Only this version's cache: right after an update the old one still exists
-  // for a moment, and caches.match() would serve the old files from it.
-  event.respondWith(
-    caches.open(CACHE).then((cache) =>
-      cache.match(req).then((hit) =>
-        hit ||
-        fetch(req).then((res) => {
-          cache.put(req, res.clone());
-          return res;
-        }).catch(() => cache.match("./index.html"))
-      )
-    )
-  );
+  event.respondWith((async () => {
+    // Only this version's cache: right after an update the old one still exists
+    // for a moment, and caches.match() would serve the old files from it.
+    const cache = await caches.open(CACHE);
+    // By URL (a navigation request can't be re-made with options), revalidated
+    // with the server rather than taken from the browser's HTTP cache.
+    const net = fetch(req.url, { cache: "no-cache", credentials: "same-origin" })
+      // A page can't be handed a redirected response as is; pass on just its content.
+      .then((res) => (res.redirected ? res.blob().then((b) => new Response(b, { status: res.status, statusText: res.statusText, headers: res.headers })) : res))
+      .then((res) => {
+        if (res.ok) cache.put(req, res.clone());
+        return res;
+      });
+    net.catch(() => {});   // if the cached copy answered first, a later network failure is fine
+    const offline = () => cache.match(req).then((hit) => hit || (req.mode === "navigate" ? cache.match("./index.html") : undefined));
+    try {
+      // A slow network falls back to the cached copy if there is one.
+      const res = await Promise.race([net, new Promise((r) => setTimeout(r, NET_WAIT_MS))]);
+      if (res) return res;
+      return (await offline()) || (await net);
+    } catch (e) {
+      return (await offline()) || Response.error();
+    }
+  })());
 });

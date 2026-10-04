@@ -9,6 +9,16 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [2.2.2] - 2026-10-04
+
+### Changed
+
+- The demo comes alive on its own: it connects, starts heating and runs at 5×, and its banner has
+  "▶ Run a 3-bag session". It doesn't ask before driving the heater, since there isn't a real one.
+- The app now always loads the current version when online. The offline copy is only used when
+  there's no network (or it takes over 4 seconds), so a new release shows up on the next load
+  instead of the one after.
+
 ## [2.2.1] - 2026-10-04
 
 ### Changed
@@ -266,7 +276,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.2.1...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.2.2...HEAD
+[2.2.2]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.0.0...v2.1.0

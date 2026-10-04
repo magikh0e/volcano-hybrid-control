@@ -599,6 +599,7 @@ body:not(.v-connected) .v-session-line { display: none; }
 .v-demo-bar { margin: 0 0 0.7rem; padding: 0.45rem 0.7rem; border-left: 3px solid var(--warn); background: var(--panel); }
 .v-demo .v-trydemo { display: none; }
 .v-demo-speedrow { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: 0.8rem; white-space: nowrap; }
+.v-demo-run { margin-left: 0.8rem; }
 
 /* Temperature graph under Fill bag */
 .v-graph { margin: 0.7rem 0 0; }

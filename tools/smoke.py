@@ -26,7 +26,8 @@ Checks:
   - deleting a workflow, an action or a preset happens at once and Undo
     (or Ctrl+Z) puts it back
   - ▲ / ▼ reorder saved workflows, keeping focus on the moved card
-  - the demo (?demo) connects itself to "Demo Volcano" and keeps its data out of
+  - the demo (?demo) connects itself to "Demo Volcano", heats at 5x, runs a
+    session from its banner button, and keeps its data out of
     the real storage
   - the temperature graph draws; the end-of-session summary opens the note
     editor, and a note and rating save and back up
@@ -34,7 +35,8 @@ Checks:
   - a Help contents link opens its FAQ entry
   - in the background, notifications say fit a bag, bag full, complete
   - a new version (served from a temporary copy of the site) shows the
-    reload banner, hides it during a run, and Reload loads it
+    reload banner, hides it during a run, and Reload loads it; offline, the
+    app still loads from the cache
   - contrast: with the graph, summary and Undo bars, note editor, preset
     labels, update banner and demo banner on screen, every visible text in
     all six themes and every tab meets WCAG AA (4.5:1, or 3:1 for large text
@@ -387,6 +389,13 @@ class Smoke:
         page.goto(f"{self.base}/?demo")
         page.wait_for_selector(".v-demo-bar", timeout=10000)
         page.wait_for_function("() => document.body.classList.contains('v-connected')", timeout=10000)   # connects itself
+        page.wait_for_function("() => fakeVolcano.state.heat === true", timeout=5000)                     # and heats
+        self.check(page.evaluate("fakeVolcano.currentSpeed") == 5, "demo starts heating by itself, at 5x")
+        page.click(".v-demo-run")
+        page.wait_for_function("() => /^(HEAT|FIT BAG|FILL)/.test(document.getElementById('v-dev-step').textContent)", timeout=10000)
+        self.check(True, f"demo's Run button starts a session ({page.text_content('#v-dev-step')})")
+        page.click("#v-dev-run .v-wf-stop")
+        page.wait_for_function("() => !document.body.classList.contains('v-running')", timeout=10000)
         page.click(".v-tab[data-tab='workflows']")
         page.click("button:has-text('+ New workflow')")
         kept = page.evaluate("""() => ({ real: localStorage.getItem("volcano-workflows"),
@@ -481,6 +490,11 @@ class Smoke:
             page.click("#v-update .v-btn")
             page.wait_for_function("() => (document.querySelector('[data-app-version]') || {}).textContent === 'v9.9.9'", timeout=10000)
             self.check(True, "Reload loads the new version")
+            ctx.set_offline(True)
+            page.reload()
+            page.wait_for_function("() => (document.querySelector('[data-app-version]') || {}).textContent === 'v9.9.9'", timeout=10000)
+            ctx.set_offline(False)
+            self.check(page.is_visible("#v-connect"), "offline, the app still loads from the cache")
             ctx.close()
         finally:
             srv.shutdown()
