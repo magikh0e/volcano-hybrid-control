@@ -23,6 +23,8 @@ Checks:
   - Backup downloads workflows, presets, history and favourites
   - ↻ on a history row runs it again (also for entries saved without a source)
   - saved workflows with duplicate ids get fresh ones on load
+  - deleting a workflow, an action or a preset happens at once and Undo
+    (or Ctrl+Z) puts it back
   - a Help contents link opens its FAQ entry
   - in the background, notifications say fit a bag, bag full, complete
   - a new version (served from a temporary copy of the site) shows the
@@ -195,6 +197,28 @@ class Smoke:
         page.goto(self.base + "/")
         ids = page.evaluate("JSON.parse(localStorage.getItem('volcano-workflows')).map((w) => w.id)")
         self.check(len(ids) == 2 and len(set(ids)) == 2, f"duplicate workflow ids repaired ({', '.join(ids)})")
+
+        # Undo instead of confirm (no ?fake here, so the undo window runs in real time)
+        saved = "JSON.parse(localStorage.getItem('volcano-workflows')).map((w) => w.name + ':' + w.actions.length).join(' ')"
+        page.click(".v-tab[data-tab='workflows']")
+        page.evaluate("[...document.querySelectorAll('.v-wf-card')].find((c) => c.querySelector('.v-wf-name').value === 'A').querySelector('.v-wf-head .v-wf-del').click()")
+        gone = page.evaluate(saved)
+        msg = page.text_content("#v-undo .v-undo-text") if page.is_visible("#v-undo") else "no undo bar"
+        page.click("#v-undo .v-btn")
+        self.check(gone == "B:1" and page.evaluate(saved) == "A:1 B:1",
+                   f"delete workflow, then Undo ({msg} -> {page.evaluate(saved)})")
+        page.evaluate("[...document.querySelectorAll('.v-wf-card')].find((c) => c.querySelector('.v-wf-name').value === 'B').querySelector('.v-wf-action .v-wf-del').click()")
+        gone = page.evaluate(saved)
+        page.evaluate("document.activeElement && document.activeElement.blur()")
+        page.keyboard.press("Control+z")
+        self.check(gone == "A:1 B:0" and page.evaluate(saved) == "A:1 B:1", "delete an action, then Ctrl+Z")
+        page.click(".v-tab[data-tab='control']")
+        page.click("#v-preset-edit")
+        before = page.evaluate("[...document.querySelectorAll('#v-presets button[data-temp]')].map((b) => b.dataset.temp).join(',')")
+        page.click("#v-presets button[data-temp]")
+        fewer = page.evaluate("[...document.querySelectorAll('#v-presets button[data-temp]')].map((b) => b.dataset.temp).join(',')")
+        page.click("#v-undo .v-btn")
+        self.check(fewer != before and page.evaluate("[...document.querySelectorAll('#v-presets button[data-temp]')].map((b) => b.dataset.temp).join(',')") == before, f"remove a preset, then Undo ({before})")
         ctx.close()
 
         # Link drops mid-run: reconnect and finish. The page is "in the background"

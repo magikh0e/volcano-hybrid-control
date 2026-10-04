@@ -569,3 +569,15 @@ body:not(.v-connected) .v-session-line { display: none; }
 .v-toc-faq li { break-inside: avoid; }
 @media (max-width: 640px) { .v-toc { grid-template-columns: 1fr; } }
 :target { scroll-margin-top: 1rem; }
+
+/* Undo bar after a delete */
+.v-undo {
+  position: fixed; left: 50%; bottom: 1rem; transform: translateX(-50%); z-index: 50;
+  display: flex; align-items: center; gap: 0.7rem; max-width: calc(100vw - 2rem);
+  padding: 0.5rem 0.6rem 0.5rem 0.9rem;
+  background: var(--panel); color: var(--text);
+  border: 1px solid var(--accent); border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+.v-undo[hidden] { display: none; }
+.v-undo-text { overflow-wrap: anywhere; }

@@ -578,10 +578,48 @@
     renderPresets();
   }
 
+  // Deletes happen straight away and offer Undo for a few seconds (or Ctrl+Z),
+  // instead of asking first. A newer delete replaces the older one's Undo.
+  const UNDO_MS = 8000;
+  let undoFn = null, undoTimer = 0;
+  function undoable(msg, undo) {
+    let bar = $("v-undo");
+    if (!bar) {
+      bar = el("div", { id: "v-undo", class: "v-undo", role: "status" },
+        el("span", { class: "v-undo-text" }),
+        el("button", { class: "v-btn", type: "button", onClick: undoNow }, "Undo"),
+        el("button", { class: "v-mini", type: "button", title: "Dismiss", onClick: undoDone }, "✕"));
+      document.body.append(bar);
+    }
+    bar.querySelector(".v-undo-text").textContent = msg;
+    bar.hidden = false;
+    undoFn = undo;
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(undoDone, UNDO_MS);
+  }
+  function undoDone() {
+    undoFn = null; clearTimeout(undoTimer);
+    const bar = $("v-undo"); if (bar) bar.hidden = true;
+  }
+  function undoNow() {
+    const f = undoFn; undoDone();
+    if (f) { f(); status("Undone.", "ok"); }
+  }
+  document.addEventListener("keydown", (e) => {
+    if (!undoFn || !(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== "z") return;
+    if (e.target.closest && e.target.closest("input, textarea, select, [contenteditable]")) return;   // their own undo
+    e.preventDefault(); undoNow();
+  });
+
   function removePreset(t) {
+    const at = presets.indexOf(t);
     presets = presets.filter((x) => x !== t);
     savePresets();
     renderPresets();
+    undoable("Removed the " + fmtT(t) + " preset.", () => {
+      if (!presets.includes(t)) presets.splice(Math.min(at, presets.length), 0, t);
+      savePresets(); renderPresets();
+    });
   }
 
   function addPreset() {
@@ -1712,7 +1750,7 @@
       el("button", { class: "v-mini", type: "button", disabled: wfRunning, title: "Copy share link", onClick: () => wfShare(wf) }, "🔗"),
       el("button", { class: "v-mini", type: "button", disabled: wfRunning, title: "Export JSON", onClick: () => wfExport(wf) }, "⤓"),
       el("button", { class: "v-mini v-wf-del", type: "button", disabled: wfRunning, title: "Delete workflow",
-        onClick: () => { if (confirm('Delete workflow "' + (wf.name || "") + '"?')) { workflows = workflows.filter((w) => w !== wf); saveWorkflows(); renderWorkflows(); } } }, "🗑")));
+        onClick: () => wfDelete(wf) }, "🗑")));
     const list = el("div", { class: "v-wf-actions" });
     (wf.actions || []).forEach((a, ai) => list.append(renderActionRow(wf, a, ai)));
     card.append(list);
@@ -1735,7 +1773,13 @@
       el("button", { class: "v-mini", type: "button", disabled: wfRunning || ai === 0, title: "Move up", onClick: () => moveAction(wf, ai, -1) }, "▲"),
       el("button", { class: "v-mini", type: "button", disabled: wfRunning || ai === wf.actions.length - 1, title: "Move down", onClick: () => moveAction(wf, ai, 1) }, "▼"),
       el("button", { class: "v-mini v-wf-del", type: "button", disabled: wfRunning, title: "Delete action",
-        onClick: () => { wf.actions.splice(ai, 1); saveWorkflows(); renderWorkflows(); } }, "🗑"));
+        onClick: () => {
+          const gone = wf.actions.splice(ai, 1)[0];
+          saveWorkflows(); renderWorkflows();
+          undoable("Deleted action " + (ai + 1) + ' from "' + (wf.name || "workflow") + '".', () => {
+            wf.actions.splice(Math.min(ai, wf.actions.length), 0, gone); saveWorkflows(); renderWorkflows();
+          });
+        } }, "🗑"));
     return el("div", { class: "v-wf-action" },
       el("div", { class: "v-wf-acthead" }, el("span", { class: "v-wf-num" }, "Action " + (ai + 1)), ctrls),
       el("div", { class: "v-wf-actbody" }, sel, renderActionParams(wf, a)));
@@ -1787,7 +1831,11 @@
         el("span", { class: "v-wf-plabel" }, "wait"),
         wfNum(c.wait, (e) => { c.wait = clampSecs(e.target.value); save(); }, { min: 0 }),
         el("button", { class: "v-mini v-wf-del", type: "button", disabled: wfRunning, title: "Remove condition",
-          onClick: () => { a.conditions.splice(ci, 1); save(); renderWorkflows(); } }, "🗑")));
+          onClick: () => {
+            const gone = a.conditions.splice(ci, 1)[0];
+            save(); renderWorkflows();
+            undoable("Removed a condition.", () => { a.conditions.splice(Math.min(ci, a.conditions.length), 0, gone); save(); renderWorkflows(); });
+          } }, "🗑")));
     });
     wrap.append(el("button", { class: "v-btn v-wf-addcond", type: "button", disabled: wfRunning,
       onClick: () => { a.conditions.push({ ifTemp: 179, thenSet: 185, wait: 30 }); save(); renderWorkflows(); } }, "+ Add condition"));
@@ -1851,7 +1899,13 @@
     box.append(list);
     if (sessLog.length > 30) box.append(el("p", { class: "v-hint" }, "Showing the latest 30 of " + sessLog.length + "."));
     box.append(el("button", { class: "v-btn v-wf-del", type: "button", disabled: wfRunning,
-      onClick: () => { if (confirm("Clear the session history in this browser?")) { sessLog = []; histSave(); renderWorkflows(); } } }, "Clear history"));
+      onClick: () => {
+        const old = sessLog;
+        sessLog = []; histSave(); renderWorkflows();
+        undoable("Cleared " + plural(old.length, "history entry").replace("entrys", "entries") + ".", () => {
+          sessLog = sessLog.concat(old).slice(0, HIST_MAX); histSave(); renderWorkflows();
+        });
+      } }, "Clear history"));
     return box;
   }
 
@@ -1911,6 +1965,17 @@
     }
     renderWorkflows();
     status("Restored " + plural(fresh.length, "workflow") + (newPresets && newPresets.length ? " and your presets" : "") + ".", "ok");
+  }
+
+  function wfDelete(wf) {
+    const at = workflows.indexOf(wf), pick = devPick;
+    workflows = workflows.filter((w) => w !== wf);
+    saveWorkflows(); renderWorkflows();
+    undoable('Deleted "' + (wf.name || "workflow") + '".', () => {
+      workflows.splice(Math.min(at, workflows.length), 0, wf);
+      devPick = pick;
+      saveWorkflows(); renderWorkflows();
+    });
   }
 
   function wfDuplicate(wf) {
