@@ -6,7 +6,7 @@
   --accent: #e08a3c;  --on-accent: #04140c;
   --bg: #0a0a0a;      --panel: #0a140d;   --inset: #04140c;  --term-bg: #050505;
   --edge: #1f3a2a;    --edge-soft: #14261a; --edge-chip: #2a4a33; --hover: #10251a;
-  --text: #b0b0b0;
+  --text: #b0b0b0; --text-dim: #868686;
   --danger: #ff9a9a;  --danger-strong: #ff6b6b; --danger-bg: #2a1414; --danger-edge: #6b1f1f;
   --warn: #e0a800;    --warn-edge: #6b5510; --ok: #8fd06a;
   --off-bg: #2a2a2a;  --off-edge: #444;
@@ -17,7 +17,7 @@
   --accent: #a8d88a;  --on-accent: #0b100d;
   --bg: #0b100d;      --panel: #0f1a12;   --inset: #07100a;  --term-bg: #050a06;
   --edge: #2a4a33;    --edge-soft: #1a2e20; --edge-chip: #3a6045; --hover: #16301f;
-  --text: #b8d4a8;
+  --text: #b8d4a8; --text-dim: #8da381;
   --danger: #ff9a9a;  --danger-strong: #ff6b6b; --danger-bg: #2a1414; --danger-edge: #6b1f1f;
   --warn: #e8d06a;    --warn-edge: #6b5f2a; --ok: #8fe06a;
   --off-bg: #1c261e;  --off-edge: #3a4a3e;
@@ -28,7 +28,7 @@
   --accent: #6cc4ff;  --on-accent: #04101c;
   --bg: #070b10;      --panel: #0b1520;   --inset: #050c14;  --term-bg: #04080c;
   --edge: #1e3550;    --edge-soft: #142538; --edge-chip: #2a4766; --hover: #10233a;
-  --text: #b4c2d0;
+  --text: #b4c2d0; --text-dim: #8994a0;
   --danger: #ff9a9a;  --danger-strong: #ff6b6b; --danger-bg: #2a1418; --danger-edge: #6b1f2a;
   --warn: #f0c44a;    --warn-edge: #6b5a20; --ok: #7ee0a0;
   --off-bg: #1c2430;  --off-edge: #3a4656;
@@ -39,7 +39,7 @@
   --accent: #ff6ad5;  --on-accent: #1a0516;
   --bg: #0d0710;      --panel: #170b1c;   --inset: #0a050c;  --term-bg: #08040a;
   --edge: #3a1f45;    --edge-soft: #26142d; --edge-chip: #4a2a55; --hover: #2a1233;
-  --text: #c8b6d0;
+  --text: #c8b6d0; --text-dim: #998aa0;
   --danger: #ff9aa8;  --danger-strong: #ff6b80; --danger-bg: #2a1420; --danger-edge: #6b1f38;
   --warn: #ffd166;    --warn-edge: #6b5520; --ok: #7dffb0;
   --off-bg: #241c2a;  --off-edge: #463a50;
@@ -50,7 +50,7 @@
   --accent: #9a4c00;  --on-accent: #ffffff;
   --bg: #f6f4ef;      --panel: #ffffff;   --inset: #fbfaf7;  --term-bg: #fbfaf7;
   --edge: #d6d0c4;    --edge-soft: #e6e1d8; --edge-chip: #cfc6b6; --hover: #efe8dc;
-  --text: #2a2a2a;
+  --text: #2a2a2a; --text-dim: #5d5c5b;
   --danger: #b00020;  --danger-strong: #d32f2f; --danger-bg: #fdecee; --danger-edge: #e6a0a8;
   --warn: #7a5f00;    --warn-edge: #d9c27a; --ok: #2e7d32;
   --off-bg: #dddddd;  --off-edge: #bbbbbb;
@@ -61,7 +61,7 @@
   --accent: #ffd400;  --on-accent: #000000;
   --bg: #000000;      --panel: #000000;   --inset: #000000;  --term-bg: #000000;
   --edge: #ffffff;    --edge-soft: #8a8a8a; --edge-chip: #bbbbbb; --hover: #222222;
-  --text: #ffffff;
+  --text: #ffffff; --text-dim: var(--text);
   --danger: #ff8080;  --danger-strong: #ff4040; --danger-bg: #330000; --danger-edge: #ff8080;
   --warn: #ffd400;    --warn-edge: #ffd400; --ok: #66ff66;
   --off-bg: #333333;  --off-edge: #ffffff;
@@ -92,7 +92,7 @@ img.banner { display: block; width: 100%; height: auto; border: 1px solid var(--
 pre { white-space: pre-wrap; word-wrap: break-word; margin: 0.8rem 0; }
 code { color: var(--accent); }
 strong.term { color: var(--accent); }
-.sub { opacity: 0.72; }
+.sub { color: var(--text-dim); }   /* dimmed by colour, so links inside keep the accent */
 hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 
 /* keyboard focus — a visible amber ring. :focus-visible fires only for keyboard
@@ -189,7 +189,7 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-mini.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 
 .v-preset-editor { margin: 0.2rem 0 0.6rem; }
-.v-preset-help { opacity: 0.75; font-size: 0.85rem; line-height: 1.5; margin: 0.4rem 0; max-width: 32rem; }
+.v-preset-help { color: var(--text-dim); font-size: 0.85rem; line-height: 1.5; margin: 0.4rem 0; max-width: 32rem; }
 .v-preset-help em { font-style: normal; color: var(--accent); }
 
 .v-num {
@@ -203,7 +203,7 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 }
 .v-num:disabled { opacity: 0.4; }
 .v-unit { opacity: 0.75; }
-.v-hint { opacity: 0.75; font-size: 0.85rem; }  /* 0.75 keeps hints >= 4.5:1 on the dark bg (WCAG AA); 0.6 fell to ~3.9:1 */
+.v-hint { color: var(--text-dim); font-size: 0.85rem; }
 
 .v-check { display: inline-flex; align-items: center; gap: 0.35rem; opacity: 0.85; cursor: pointer; }
 .v-check input { accent-color: var(--accent); }
@@ -307,7 +307,7 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-wf-tpltext { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
 .v-wf-tplname { display: flex; align-items: center; gap: 0.45rem; }
 .v-wf-fav { padding: 0.2rem 0.4rem; font-size: 1rem; }
-.v-wf-tpldesc { opacity: 0.75; font-size: 0.85rem; }
+.v-wf-tpldesc { color: var(--text-dim); font-size: 0.85rem; }
 .v-wf-tpl .v-btn { flex: none; }
 .v-wf-tplbtns { display: flex; flex-direction: column; gap: 0.3rem; flex: none; }
 .v-wf-tplbtns .v-btn { white-space: nowrap; }
@@ -371,7 +371,7 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-tabpanel { margin: 0.4rem 0; }
 .v-subhead {
   font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
-  opacity: 0.85; margin: 1.1rem 0 0.4rem;
+  margin: 1.1rem 0 0.4rem;
 }
 
 /* ---- console / terminal ---- */
@@ -389,8 +389,8 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-term-ok   { color: var(--ok); }   /* terminal-green success */
 .v-term-err  { color: var(--danger); }
 .v-term-warn { color: var(--warn); }
-.v-term-dim  { opacity: 0.75; }
-.v-term-sys  { color: var(--accent); opacity: 0.75; }
+.v-term-dim  { color: var(--text-dim); }
+.v-term-sys  { color: var(--accent); }
 .v-term-form {
   display: flex; align-items: baseline; gap: 0.4rem;
   border-top: 1px solid var(--edge); padding-top: 0.4rem;
@@ -466,7 +466,7 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-dev-modes { display: flex; }
 
 /* Session runtime / auto-off countdown, under the status line (only while connected) */
-.v-session-line { margin: -0.35rem 0 0.8rem; padding: 0 0.7rem; font-size: 0.85rem; opacity: 0.85; }
+.v-session-line { margin: -0.35rem 0 0.8rem; padding: 0 0.7rem; font-size: 0.85rem; color: var(--text-dim); }
 .v-session-label { color: var(--accent); margin-right: 0.35rem; }
 body:not(.v-connected) .v-session-line { display: none; }
 
@@ -477,7 +477,7 @@ body:not(.v-connected) .v-session-line { display: none; }
 .v-verbadge:hover { background: var(--hover); }
 
 /* "by magikh0e · source" under the page title */
-.v-tagline { margin: -0.15rem 0 0.35rem; font-size: 0.8rem; opacity: 0.85; }
+.v-tagline { margin: -0.15rem 0 0.35rem; font-size: 0.8rem; color: var(--text-dim); }
 
 /* Control tab: Fill bag under the run dropdown; tap the screen for an exact target */
 .v-dev-fill { width: 100%; margin-top: 0.5rem; }
@@ -598,6 +598,7 @@ body:not(.v-connected) .v-session-line { display: none; }
 /* Demo */
 .v-demo-bar { margin: 0 0 0.7rem; padding: 0.45rem 0.7rem; border-left: 3px solid var(--warn); background: var(--panel); }
 .v-demo .v-trydemo { display: none; }
+.v-demo-speedrow { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: 0.8rem; white-space: nowrap; }
 
 /* Temperature graph under Fill bag */
 .v-graph { margin: 0.7rem 0 0; }

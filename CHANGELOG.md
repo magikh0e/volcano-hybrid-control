@@ -9,6 +9,21 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-04
+
+### Added
+
+- Demo speed: 1×, 5× or 20× in the demo banner, so a whole multi-bag session can be watched in a
+  minute or two. It can change mid-session.
+
+### Fixed
+
+- Contrast in every theme, now checked automatically for every visible text on every tab and on
+  the Help page: links and code inside dimmed text (header, footer, hints, help text) were dimmed
+  too, falling to 3.3:1 in the Light theme; the Light theme's section headings, Session label and
+  byline, and the console's bullets, were below 4.5:1. Dimmed text now uses a per-theme colour
+  instead of transparency, so links inside it keep their full colour.
+
 ## [2.1.0] - 2026-10-04
 
 ### Added
@@ -239,7 +254,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.9.0...v2.0.0
 [1.9.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.8.0...v1.9.0

@@ -68,7 +68,8 @@ data in the tab's own storage). For development, serve the repo locally (for exa
 `python -m http.server 8765`) and open `http://localhost:8765/?fake`, or `?fake=50` to run
 the app's timers 50x faster; `?fake` uses the normal storage and only works on localhost.
 Connect as usual; the console has `fakeVolcano.state`, `fakeVolcano.log` (every write),
-`fakeVolcano.drop()` to drop the link and `fakeVolcano.failReconnects(n)`.
+`fakeVolcano.drop()` to drop the link, `fakeVolcano.failReconnects(n)`, and
+`fakeVolcano.setSpeed(n)` (what the demo's speed switch calls).
 
 ## Smoke test
 

@@ -2362,9 +2362,25 @@
     if (DEMO) {
       document.body.classList.add("v-demo");
       const p = $("v-panel");
+      // 1x / 5x / 20x: heating, holds and fills, so a whole session can be watched in minutes.
+      let demoSpeed = Number(store.getItem("volcano-demo-speed")) || 1;
+      const speeds = el("span", { class: "v-wf-chips v-demo-speed", role: "group", "aria-label": "Demo speed" });
+      const setSpeed = (n) => {
+        demoSpeed = n;
+        if (window.fakeVolcano) window.fakeVolcano.setSpeed(n);
+        try { store.setItem("volcano-demo-speed", String(n)); } catch (e) { /* ignore */ }
+        speeds.querySelectorAll("button").forEach((b) => {
+          const on = Number(b.dataset.speed) === n;
+          b.classList.toggle("active", on); b.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+      };
+      [1, 5, 20].forEach((n) => speeds.append(el("button", { class: "v-wf-chip", type: "button", "data-speed": String(n),
+        title: n === 1 ? "Real time" : n + " times faster", onClick: () => setSpeed(n) }, n + "×")));
+      setSpeed([1, 5, 20].includes(demoSpeed) ? demoSpeed : 1);
       if (p) p.prepend(el("p", { class: "v-demo-bar", role: "note" },
         el("strong", null, "Demo:"), " a simulated Volcano. Nothing here talks to a real device, and what you save stays in this tab. ",
-        el("a", { href: location.pathname }, "Exit demo")));
+        el("a", { href: location.pathname }, "Exit demo"),
+        el("span", { class: "v-demo-speedrow" }, "Speed ", speeds)));
       status("Demo: click Connect to start the simulated Volcano.");
     } else status("Ready. Click Connect and pick your Volcano.");
     setTimeout(importSharedWorkflow, 0);   // offer to import a #wf=… share link, if present

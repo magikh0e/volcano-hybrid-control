@@ -35,6 +35,10 @@ Checks:
   - in the background, notifications say fit a bag, bag full, complete
   - a new version (served from a temporary copy of the site) shows the
     reload banner, hides it during a run, and Reload loads it
+  - contrast: with the graph, summary and Undo bars, note editor, preset
+    labels, update banner and demo banner on screen, every visible text in
+    all six themes and every tab meets WCAG AA (4.5:1, or 3:1 for large text
+    and the graph's lines)
 """
 
 import argparse
@@ -70,6 +74,55 @@ window.Notification = function (title) { window.__notes.push(title); };
 window.Notification.permission = "granted";
 window.Notification.requestPermission = () => Promise.resolve("granted");
 """
+
+
+THEMES = ["amber", "phosphor", "ice", "neon", "light", "contrast"]
+TABS = ["control", "settings", "workflows", "console"]
+# Every visible text (and the graph's lines) against what's actually behind it:
+# colours composited with opacity up the tree, backgrounds stacked down from <html>.
+AUDIT = r"""() => {
+  const rgba = (s) => { const m = /rgba?\(([^)]+)\)/.exec(s || ""); if (!m) return null;
+    const p = m[1].split(/[\s,\/]+/).filter(Boolean).map(parseFloat); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; };
+  const over = (f, b) => { const a = f[3]; return [0, 1, 2].map((i) => f[i] * a + b[i] * (1 - a)).concat(1); };
+  const lum = (c) => { const v = c.slice(0, 3).map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
+    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+  const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  const chain = (el) => { const c = []; for (let n = el; n && n.nodeType === 1; n = n.parentElement) c.push(n); return c; };
+  const bgOf = (el) => chain(el).reverse().reduce((bg, n) => { const c = rgba(getComputedStyle(n).backgroundColor);
+    return c && c[3] > 0 ? over(c, bg) : bg; }, [255, 255, 255, 1]);
+  const opacityOf = (el) => chain(el).reduce((o, n) => o * parseFloat(getComputedStyle(n).opacity), 1);
+  const name = (el) => el.tagName.toLowerCase() + (typeof el.className === "string" && el.className ? "." + el.className.trim().split(/\s+/).join(".") : "") + (el.id ? "#" + el.id : "");
+  const out = [], seen = new Set();
+  const check = (el, text, colour, needed) => {
+    const bg = bgOf(el), fg = over([colour[0], colour[1], colour[2], colour[3] * opacityOf(el)], bg), v = ratio(fg, bg);
+    if (v < needed) out.push({ el: name(el), text: text.slice(0, 40), ratio: Math.round(v * 100) / 100, need: needed });
+  };
+  const shown = (el) => { const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+    return r.width > 0 && r.height > 0 && cs.visibility === "visible" && !el.closest("[hidden]"); };
+  const off = (el) => el.closest("button:disabled, input:disabled, select:disabled, [aria-disabled='true'], svg, script, style, option");
+  const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  while (walk.nextNode()) {
+    const t = walk.currentNode, el = t.parentElement;
+    if (!t.nodeValue.trim() || !el || seen.has(el)) continue;
+    seen.add(el);
+    if (off(el) || !shown(el)) continue;
+    const cs = getComputedStyle(el), c = rgba(cs.color); if (!c) continue;
+    const size = parseFloat(cs.fontSize), large = size >= 24 || (size >= 18.66 && parseInt(cs.fontWeight, 10) >= 700);
+    check(el, t.nodeValue.trim(), c, large ? 3 : 4.5);
+  }
+  document.querySelectorAll("input:not([type=checkbox]):not([type=radio]), select, textarea").forEach((el) => {
+    if (off(el) || !shown(el) || !el.value) return;
+    check(el, "[" + el.value + "]", rgba(getComputedStyle(el).color), 4.5);
+  });
+  document.querySelectorAll("#v-graph-svg polyline").forEach((pl) => {
+    if (!shown(pl.closest(".v-graph-plot"))) return;
+    const cs = getComputedStyle(pl), c = rgba(cs.stroke); if (!c) return;
+    const bg = bgOf(pl.closest(".v-graph-plot"));
+    const fg = over([c[0], c[1], c[2], c[3] * parseFloat(cs.strokeOpacity || "1")], bg), v = ratio(fg, bg);
+    if (v < 3) out.push({ el: "graph " + pl.getAttribute("class"), text: "line", ratio: Math.round(v * 100) / 100, need: 3 });
+  });
+  return out;
+}"""
 
 
 class Quiet(http.server.SimpleHTTPRequestHandler):
@@ -343,9 +396,61 @@ class Smoke:
                    "demo connects to Demo Volcano and saves only to its own storage")
         ctx.close()
 
+        self.contrast(browser)
         self.update(browser)
         self.check(not self.errors, "no script errors" + ("".join("\n          " + e for e in self.errors[:8]) if self.errors else ""))
 
+
+    def contrast(self, browser):
+        """Every new and old piece of UI on screen at once, measured in all themes and tabs."""
+        seed = """if (!sessionStorage.getItem("seeded")) { sessionStorage.setItem("seeded", "1");
+          localStorage.setItem("volcano-history", JSON.stringify([{ name: "Quick Bag 185 °C", started: "2026-10-01T18:00:00Z",
+            secs: 75, bags: 1, outcome: "stopped", rating: 3, note: "Quick one" }]));
+          localStorage.setItem("volcano-preset-labels", JSON.stringify({ 179: "Terps" })); }"""
+        ctx = browser.new_context(viewport={"width": 1280, "height": 800}, service_workers="block")
+        ctx.add_init_script(INIT + seed)
+        page = ctx.new_page(); self.watch(page)
+        self.connect(page)
+        page.evaluate("fakeVolcano.state.cur = 183")
+        self.run_template(page, "Quick Bag 185")
+        page.wait_for_selector("#v-done:not([hidden])", timeout=60000)            # summary bar
+        page.click(".v-tab[data-tab='workflows']")
+        page.evaluate("document.querySelector('.v-wf-history').open = true")
+        page.click(".v-hist-row:nth-child(2) .v-hist-notebtn")                   # note editor, stars
+        page.click(".v-tab[data-tab='control']")
+        page.click("#v-preset-edit")                                             # preset editor, labels
+        page.evaluate("updateReady()")                                           # update banner
+        page.wait_for_selector("#v-update")
+        page.click("#v-presets button[data-temp='230']")                         # Undo bar (8 s)
+        fails = {}
+        for theme in THEMES:
+            page.evaluate("(t) => document.documentElement.setAttribute('data-theme', t)", theme)
+            for tab in TABS:
+                page.click(f".v-tab[data-tab='{tab}']")
+                for f in page.evaluate(AUDIT):
+                    fails.setdefault(f"{theme}: {f['el']} '{f['text']}' {f['ratio']}:1 (needs {f['need']})", 1)
+        ctx.close()
+        # the demo's banner and speed switch
+        ctx = browser.new_context(viewport={"width": 1280, "height": 800}, service_workers="block")
+        ctx.add_init_script(INIT)
+        page = ctx.new_page(); self.watch(page)
+        page.goto(f"{self.base}/?demo")
+        page.wait_for_selector(".v-demo-bar")
+        for theme in THEMES:
+            page.evaluate("(t) => document.documentElement.setAttribute('data-theme', t)", theme)
+            for f in page.evaluate(AUDIT):
+                fails.setdefault(f"{theme}: {f['el']} '{f['text']}' {f['ratio']}:1 (needs {f['need']})", 1)
+        # the Help page, every answer open
+        page = ctx.new_page(); self.watch(page)
+        page.goto(f"{self.base}/help.html")
+        page.evaluate("document.querySelectorAll('details').forEach((d) => { d.open = true; })")
+        for theme in THEMES:
+            page.evaluate("(t) => document.documentElement.setAttribute('data-theme', t)", theme)
+            for f in page.evaluate(AUDIT):
+                fails.setdefault(f"{theme} (help): {f['el']} '{f['text']}' {f['ratio']}:1 (needs {f['need']})", 1)
+        ctx.close()
+        self.check(not fails, "contrast in all themes and tabs, and on Help" +
+                   "".join("\n          " + k for k in list(fails)[:80]) + (f"\n          … {len(fails) - 80} more" if len(fails) > 80 else ""))
 
     def update(self, browser):
         """Publish a "new version" into a copy of the site and watch an open page pick it up."""

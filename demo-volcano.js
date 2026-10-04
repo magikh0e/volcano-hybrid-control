@@ -9,6 +9,10 @@
 //   ?fake          localhost only, for development: 1 °C/s, the app's own storage
 //   ?fake=50       app timers run 50x faster (holds, fills, countdowns)
 //
+// The speed can change while it runs (the demo's 1x / 5x / 20x switch):
+// fakeVolcano.setSpeed(n). It scales the app's timers and, up to 20x, the
+// heating and auto-off.
+//
 // From the browser console:
 //   fakeVolcano.state            current simulated state
 //   fakeVolcano.log              every write the app made, newest last
@@ -33,13 +37,11 @@
     var m = /[?&]fake=(\d+)/.exec(location.search);
     return m ? Math.max(1, Number(m[1])) : 1;
   })();
-  if (speed > 1) {
-    var realTimeout = window.setTimeout.bind(window);
-    window.setTimeout = function (fn, ms) {
-      var rest = Array.prototype.slice.call(arguments, 2);
-      return realTimeout.apply(window, [fn, Math.max(0, (ms || 0) / speed)].concat(rest));
-    };
-  }
+  var realTimeout = window.setTimeout.bind(window);
+  window.setTimeout = function (fn, ms) {
+    var rest = Array.prototype.slice.call(arguments, 2);
+    return realTimeout.apply(window, [fn, Math.max(0, (ms || 0) / speed)].concat(rest));
+  };
 
   var S = { cur: 40, set: 185, heat: false, fan: false, led: 70, shutOff: 1800, autoOff: 0,
     heatSecs: 512 * 3600 + 17 * 60, connected: false, failNext: 0 };
@@ -54,16 +56,21 @@
 
   // Physics: up while heating (3 °C/s in the demo, about a real Volcano; 1 °C/s
   // for testing), slow drift down otherwise; auto-off counts down.
-  var rate = demo ? 3 : 1;
+  // Ticks every 100 ms; each covers 0.1 s of device time times the speed (up to 20x).
+  var rate = demo ? 3 : 1, secs = 0, shown = null;
   setInterval(function () {
+    var dt = 0.1 * Math.min(speed, 20);
     if (S.heat) {
-      var d = S.set - S.cur; S.cur += Math.sign(d) * Math.min(rate, Math.abs(d));
-      if (S.autoOff > 0 && --S.autoOff === 0) { S.heat = false; S.fan = false; }
-      S.heatSecs++;
-    } else if (S.cur > 25) S.cur -= 0.2;
-    if (S.fan && S.heat) S.cur -= 0.3;   // air flow pulls the chamber down a touch
-    if (notify && S.connected) notify(u16(Math.round(S.cur * 10)));
-  }, 1000 / Math.min(speed, 20));
+      var d = S.set - S.cur; S.cur += Math.sign(d) * Math.min(rate * dt, Math.abs(d));
+      for (secs += dt; secs >= 1; secs--) {
+        S.heatSecs++;
+        if (S.autoOff > 0 && --S.autoOff === 0) { S.heat = false; S.fan = false; }
+      }
+    } else if (S.cur > 25) S.cur -= 0.2 * dt;
+    if (S.fan && S.heat) S.cur -= 0.3 * dt;   // air flow pulls the chamber down a touch
+    var now = Math.round(S.cur * 10);
+    if (notify && S.connected && now !== shown) { shown = now; notify(u16(now)); }
+  }, 100);
 
   function read(uuid) {
     if (!S.connected) return Promise.reject(lost());
@@ -151,6 +158,8 @@
       return "dropped";
     },
     failReconnects: function (n) { S.failNext = n; return "next " + n + " reconnects will fail"; },
+    setSpeed: function (n) { speed = Math.max(1, Number(n) || 1); return "speed x" + speed; },
+    get currentSpeed() { return speed; },
   };
   if (!demo) console.info("[fake-volcano] simulated Volcano active" + (speed > 1 ? ", timers x" + speed : "") +
     ". Try fakeVolcano.drop() during a run.");
