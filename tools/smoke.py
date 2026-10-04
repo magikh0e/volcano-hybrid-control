@@ -46,7 +46,12 @@ from urllib.request import urlopen
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SPEED = 40          # ?fake=N: app timers run N times faster
-INIT = "window.confirm = () => true; window.alert = () => {};"
+INIT = """window.confirm = () => true; window.alert = () => {};
+// Chrome on Linux (CI) has no navigator.bluetooth. The app checks for it at load,
+// before tools/fake-volcano.js arrives, so give it one for the fake to take over.
+if (!navigator.bluetooth) Object.defineProperty(navigator, "bluetooth", { configurable: true,
+  value: { requestDevice: () => Promise.reject(new DOMException("No Bluetooth here", "NotFoundError")) } });
+"""
 # The page reports itself hidden, notifications are on and allowed, and every
 # notification's title is recorded in window.__notes.
 BACKGROUND = """
@@ -65,9 +70,15 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
         pass
 
 
+class QuietServer(http.server.ThreadingHTTPServer):
+    def handle_error(self, request, client_address):
+        if not isinstance(sys.exc_info()[1], ConnectionError):   # the browser hung up early: fine
+            super().handle_error(request, client_address)
+
+
 def serve(directory=ROOT):
     handler = functools.partial(Quiet, directory=directory)
-    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    srv = QuietServer(("127.0.0.1", 0), handler)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     return srv, f"http://localhost:{srv.server_address[1]}"
 
