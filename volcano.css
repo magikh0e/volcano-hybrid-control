@@ -251,6 +251,13 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 #v-status[data-kind="err"]  { border-left-color: var(--danger-strong); color: var(--danger); }
 
 .v-note { color: var(--danger-strong); }
+.v-update {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.7rem;
+  margin: 0.7rem 0 0; padding: 0.45rem 0.7rem;
+  border-left: 3px solid var(--accent); background: var(--panel);
+}
+.v-update[hidden] { display: none; }
+.v-update span { flex: 1 1 12rem; }
 .v-error {
   margin: 0.7rem 0 0;
   padding: 0.5rem 0.7rem;

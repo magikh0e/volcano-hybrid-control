@@ -9,6 +9,21 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-04
+
+### Added
+
+- "📣 Notify in background" on the Workflows tab: while a session runs and the app is in the
+  background, a system notification says when to fit a fresh bag, when the bag is full, and when
+  the session ends or stops on an error. Tapping it brings the app back.
+- When a new version is installed, a banner names it and offers Reload. It stays hidden while a
+  session runs. An installed app also checks for a new version when it comes back to the front.
+
+### Fixed
+
+- Right after an update, the offline cache could serve a file from the previous version until
+  the next reload.
+
 ## [1.4.0] - 2026-10-03
 
 ### Added
@@ -158,7 +173,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.1.0...v1.2.0

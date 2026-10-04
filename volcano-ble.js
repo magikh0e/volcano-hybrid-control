@@ -1243,6 +1243,41 @@
       if (wfAudio && wfAudio.state === "suspended") wfAudio.resume();
     } catch (e) { wfAudio = null; }
   }
+  // The same moments as system notifications, only while the app is in the
+  // background (another app, another tab, screen off).
+  let wfNotifyOn = false;
+  try { wfNotifyOn = localStorage.getItem("volcano-notify") === "1"; } catch (e) { /* ignore */ }
+  const NOTIFY_TAG = "volcano-session";
+  const canNotify = () => "Notification" in window && Notification.permission === "granted";
+  function wfNotify(title, body) {
+    if (!wfNotifyOn || !canNotify() || document.visibilityState === "visible") return;
+    const opts = { body, tag: NOTIFY_TAG, renotify: true, icon: "assets/icon-192.png", badge: "assets/favicon-32.png" };
+    // Android only shows notifications from the service worker; desktop takes either.
+    const viaWorker = navigator.serviceWorker && navigator.serviceWorker.controller
+      ? navigator.serviceWorker.ready.then((r) => r.showNotification(title, opts)) : Promise.reject(new Error("no worker"));
+    viaWorker.catch(() => { try { new Notification(title, opts); } catch (e) { /* not shown */ } });
+  }
+  document.addEventListener("visibilitychange", () => {   // back in the app: clear them
+    if (document.visibilityState !== "visible" || !navigator.serviceWorker) return;
+    navigator.serviceWorker.getRegistration()
+      .then((r) => (r ? r.getNotifications({ tag: NOTIFY_TAG }) : []))
+      .then((ns) => ns.forEach((n) => n.close())).catch(() => {});
+  });
+  async function wfNotifyToggle(e) {
+    const box = e.target;
+    if (box.checked && Notification.permission !== "granted") {
+      let p = "denied";
+      try { p = await Notification.requestPermission(); } catch (err) { /* treated as denied */ }
+      if (p !== "granted") {
+        box.checked = false;
+        status("Notifications are blocked for this site. Allow them in the browser's site settings, then tick this again.", "warn");
+      }
+    }
+    wfNotifyOn = box.checked;
+    try { localStorage.setItem("volcano-notify", wfNotifyOn ? "1" : "0"); } catch (err) { /* ignore */ }
+    if (wfNotifyOn) status("While the app is in the background, a notification says when to fit a bag, when it's full and when the session ends.", "ok");
+  }
+
   function wfBeep(times, ms) {
     if (!wfCuesOn) return;
     try {
@@ -1340,6 +1375,7 @@
     if (!wf.actions || !wf.actions.length) { status("This workflow has no actions.", "warn"); return; }
     if (!confirm('Run "' + (wf.name || "workflow") + '"? It drives the heater and pump — don’t leave it unattended.')) return;
     wfRunning = true; wfStop = false; wfStopHeat = false; wfRunId = wf.id;
+    document.body.classList.add("v-running");
     wfRunName = wf.name || "workflow"; wfRunText = "Starting…";
     const runStarted = Date.now();
     let runBags = 0, runOutcome = "complete";
@@ -1368,7 +1404,10 @@
             await write(FAN_ON, [1]); fanOn = true; setLed("v-fanled", true);
             await wfSleep(a.secs, wfIsFill(a) ? "Filling bag" : "Fan");
             await write(FAN_OFF, [0]); fanOn = false; setLed("v-fanled", false);
-            if (wfIsFill(a) && !wfStop) { wfBeep(1, 450); runBags++; }   // bag full
+            if (wfIsFill(a) && !wfStop) {   // bag full
+              wfBeep(1, 450); runBags++;
+              wfNotify("Bag full", wfRunName + ": bag " + runBags + " is full.");
+            }
             paused = true; i++; break;
           case "fanOnGlobal":
             await write(FAN_ON, [1]); fanOn = true; setLed("v-fanled", true);
@@ -1376,7 +1415,7 @@
             i++; break;
           case "wait": {
             const fit = wfFitsBag(wf.actions, i) && a.secs > 0;
-            if (fit) wfBeep(2, 150);
+            if (fit) { wfBeep(2, 150); wfNotify("Fit a fresh bag", wfRunName + ": the fill starts in " + fmtDur(a.secs) + "."); }
             await wfSleep(a.secs, fit ? "Fit a fresh bag" : "Wait"); paused = true; i++; break;
           }
           case "setLED":
@@ -1404,7 +1443,10 @@
               await wfHeatTo(set);   // like Onyx: the hold starts once the rung is reached
             }
             const fit = wfFitsBag(wf.actions, i) && w > 0;
-            if (fit && !wfStop) wfBeep(2, 150);
+            if (fit && !wfStop) {
+              wfBeep(2, 150);
+              wfNotify("Fit a fresh bag", wfRunName + (set != null ? " at " + fmtT(set) : "") + ": the fill starts in " + fmtDur(w) + ".");
+            }
             await wfSleep(w, fit ? "Fit a fresh bag" + (set != null ? " (" + fmtT(set) + ")" : "")
               : "Hold " + (set != null ? fmtT(set) : "")); paused = true; i++; break;
           }
@@ -1430,10 +1472,13 @@
       }
       if (wfStop) runOutcome = wfStopHeat ? "stopped, heat off" : "stopped";
       wfSetRun(wfStop ? "Stopped." : "Workflow complete.");
+      if (!wfStop) wfNotify("Session complete", wfRunName + (runBags ? ": " + plural(runBags, "bag") : "") +
+        " in " + fmtDur(Math.round((Date.now() - runStarted) / 1000)) + ".");
       status(wfStop ? (wfStopHeat ? "Workflow stopped. Heater and fan off." : "Workflow stopped.") : "Workflow complete.", "ok");
     } catch (e) {
       runOutcome = "error";
       wfSetRun("Error: " + (e.message || e));
+      wfNotify("Session stopped", wfRunName + ": " + (e.message || e));
       status("Workflow error: " + (e.message || e), "err");
     } finally {
       if (wfStopHeat && svc) {
@@ -1448,6 +1493,7 @@
       histAdd({ name: wfRunName, started: new Date(runStarted).toISOString(),
         secs: Math.round((Date.now() - runStarted) / 1000), bags: runBags, outcome: runOutcome });
       wfRunning = false; wfRunId = null;
+      document.body.classList.remove("v-running");
       if (svc && !pollTimer) pollTimer = setInterval(pollStatus, 2000);   // resume polling
       renderWorkflows();
     }
@@ -1592,7 +1638,10 @@
           wfCuesOn = e.target.checked;
           try { localStorage.setItem("volcano-cues", wfCuesOn ? "1" : "0"); } catch (err) { /* ignore */ }
           if (wfCuesOn) { wfPrepareAudio(); wfBeep(1, 120); }   // a sample beep
-        } }), " 🔔 Sound & vibration cues")));
+        } }), " 🔔 Sound & vibration cues"),
+      "Notification" in window ? el("label", { class: "v-check v-wf-cues",
+        title: "A system notification to fit a bag, when it's full and when the session ends, while the app is in the background" },
+        el("input", { type: "checkbox", checked: wfNotifyOn && canNotify(), onChange: wfNotifyToggle }), " 📣 Notify in background") : null));
     // Whatever is running (a saved workflow or a template) shows here, with Stop.
     if (wfRunning) box.append(el("div", { class: "v-wf-runbar", role: "status" },
       el("div", { class: "v-wf-runtext" },

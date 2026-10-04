@@ -21,6 +21,9 @@ Checks:
   - every theme applies, °F app units show on the drawing
   - Backup downloads workflows, presets and history
   - a Help contents link opens its FAQ entry
+  - in the background, notifications say fit a bag, bag full, complete
+  - a new version (served from a temporary copy of the site) shows the
+    reload banner, hides it during a run, and Reload loads it
 """
 
 import argparse
@@ -29,13 +32,26 @@ import http.server
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
 import threading
 from urllib.request import urlopen
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SPEED = 40          # ?fake=N: app timers run N times faster
 INIT = "window.confirm = () => true; window.alert = () => {};"
+# The page reports itself hidden, notifications are on and allowed, and every
+# notification's title is recorded in window.__notes.
+BACKGROUND = """
+Object.defineProperty(Document.prototype, "visibilityState", { get: () => "hidden" });
+Object.defineProperty(Document.prototype, "hidden", { get: () => true });
+localStorage.setItem("volcano-notify", "1");
+window.__notes = [];
+window.Notification = function (title) { window.__notes.push(title); };
+window.Notification.permission = "granted";
+window.Notification.requestPermission = () => Promise.resolve("granted");
+"""
 
 
 class Quiet(http.server.SimpleHTTPRequestHandler):
@@ -43,8 +59,8 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
         pass
 
 
-def serve():
-    handler = functools.partial(Quiet, directory=ROOT)
+def serve(directory=ROOT):
+    handler = functools.partial(Quiet, directory=directory)
     srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     return srv, f"http://localhost:{srv.server_address[1]}"
@@ -97,9 +113,9 @@ class Smoke:
         return page.evaluate("JSON.parse(localStorage.getItem('volcano-history') || '[]')")
 
     def run(self, browser):
-        def context(**kw):
+        def context(init="", **kw):
             ctx = browser.new_context(viewport={"width": 1280, "height": 800}, service_workers="block", **kw)
-            ctx.add_init_script(INIT)
+            ctx.add_init_script(INIT + init)
             return ctx
 
         # Quick Bag, start to finish
@@ -138,8 +154,9 @@ class Smoke:
                    "backup has workflows, presets and history")
         ctx.close()
 
-        # Link drops mid-run: reconnect and finish
-        ctx = context()
+        # Link drops mid-run: reconnect and finish. The page is "in the background"
+        # with notifications on, so each cue should also notify.
+        ctx = context(BACKGROUND)
         page = ctx.new_page(); self.watch(page)
         self.connect(page)
         page.evaluate("fakeVolcano.state.cur = 178")
@@ -152,6 +169,9 @@ class Smoke:
         self.check(h and h[0]["outcome"] == "complete" and "fanOn" in after and "heatOff" in after,
                    f"link dropped while heating (first reconnect refused): resumes, fills, finishes "
                    f"({h[0]['outcome'] if h else 'no entry'})")
+        notes = page.evaluate("window.__notes")
+        self.check(notes[:1] == ["Fit a fresh bag"] and "Bag full" in notes and notes[-1] == "Session complete",
+                   f"background notifications: {', '.join(notes) or 'none'}")
 
         # Themes and °F
         page.click(".v-tab[data-tab='settings']")
@@ -178,7 +198,44 @@ class Smoke:
         self.check(page.locator("a[href='/']").count() > 0 or page.locator("a").count() > 0, "404 page loads")
         ctx.close()
 
+        self.update(browser)
         self.check(not self.errors, "no script errors" + ("".join("\n          " + e for e in self.errors[:8]) if self.errors else ""))
+
+
+    def update(self, browser):
+        """Publish a "new version" into a copy of the site and watch an open page pick it up."""
+        tmp = tempfile.mkdtemp(prefix="volcano-smoke-")
+        site = os.path.join(tmp, "site")
+        shutil.copytree(ROOT, site, ignore=shutil.ignore_patterns(".git", ".claude", "tools", "deploy", "screenshots"))
+        srv, base = serve(site)
+        try:
+            ctx = browser.new_context(viewport={"width": 1280, "height": 800})
+            ctx.add_init_script(INIT)
+            page = ctx.new_page(); self.watch(page)
+            page.goto(base + "/")
+            page.wait_for_function("() => !!navigator.serviceWorker.controller", timeout=15000)
+
+            def edit(name, old, new):
+                path = os.path.join(site, name)
+                text = open(path, encoding="utf-8").read()
+                open(path, "w", encoding="utf-8", newline="").write(re.sub(old, new, text, count=1))
+            edit("service-worker.js", r'const CACHE = "([^"]+)"', r'const CACHE = "\g<1>-next"')
+            edit("version.js", r'VOLCANO_APP_VERSION = "[^"]+"', 'VOLCANO_APP_VERSION = "9.9.9"')
+
+            page.evaluate("document.body.classList.add('v-running')")   # as if a session were running
+            page.evaluate("navigator.serviceWorker.getRegistration().then((r) => r.update())")
+            page.wait_for_selector("#v-update", state="attached", timeout=15000)
+            self.check(page.is_hidden("#v-update"), "update banner waits while a session runs")
+            page.evaluate("document.body.classList.remove('v-running')")
+            page.wait_for_selector("#v-update", state="visible", timeout=5000)
+            self.check("9.9.9" in page.text_content("#v-update"), f"update banner: {page.text_content('#v-update').strip()}")
+            page.click("#v-update .v-btn")
+            page.wait_for_function("() => (document.querySelector('[data-app-version]') || {}).textContent === 'v9.9.9'", timeout=10000)
+            self.check(True, "Reload loads the new version")
+            ctx.close()
+        finally:
+            srv.shutdown()
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 def main():

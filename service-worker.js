@@ -5,7 +5,7 @@
 // only the UI is cached, not the BLE session). Bump CACHE on any asset change
 // to invalidate the old shell.
 
-const CACHE = "volcano-hybrid-control-v55";
+const CACHE = "volcano-hybrid-control-v56";
 const ASSETS = [
   "./",
   "./index.html",
@@ -43,17 +43,31 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Tapping a session notification brings the app back to the front.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
+      const app = wins.find((w) => !/\/(help|404)\.html/.test(new URL(w.url).pathname)) || wins[0];
+      return app ? app.focus() : self.clients.openWindow("./");
+    })
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET" || new URL(req.url).origin !== self.location.origin) return;
+  // Only this version's cache: right after an update the old one still exists
+  // for a moment, and caches.match() would serve the old files from it.
   event.respondWith(
-    caches.match(req).then((hit) =>
-      hit ||
-      fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy));
-        return res;
-      }).catch(() => caches.match("./index.html"))
+    caches.open(CACHE).then((cache) =>
+      cache.match(req).then((hit) =>
+        hit ||
+        fetch(req).then((res) => {
+          cache.put(req, res.clone());
+          return res;
+        }).catch(() => cache.match("./index.html"))
+      )
     )
   );
 });
