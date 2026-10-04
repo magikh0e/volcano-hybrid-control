@@ -950,6 +950,7 @@
   // a utility, inferred from {bags} unless set explicitly.
   const WF_FILTERS = [
     { k: "all",     label: "All" },
+    { k: "fav",     label: "★ Favourites" },
     { k: "bag",     label: "🛍 Bags" },
     { k: "whip",    label: "💨 Whip" },
     { k: "single",  label: "Single bag" },
@@ -959,8 +960,26 @@
   // The modes a template shows under filter f; empty = hidden.
   function tplVisibleModes(t, f) {
     if (f === "all") return tplModes(t);
+    if (f === "fav") return tplFavs.has(t.name) ? tplModes(t) : [];
     if (t.temps) return tplModes(t).filter((m) => m === f);
     return tplKind(t) === f ? [null] : [];
+  }
+  // Favourite templates (by name): starred in the list, first in the drawing's dropdown.
+  let tplFavs = new Set();
+  try {
+    const f = JSON.parse(localStorage.getItem("volcano-tpl-favs") || "[]");
+    if (Array.isArray(f)) tplFavs = new Set(f.filter((n) => WF_TEMPLATES.some((t) => t.name === n)));
+  } catch (e) { /* ignore */ }
+  function tplFavSave() { try { localStorage.setItem("volcano-tpl-favs", JSON.stringify([...tplFavs])); } catch (e) { /* ignore */ } }
+  function tplFavToggle(name) {
+    if (tplFavs.has(name)) tplFavs.delete(name); else tplFavs.add(name);
+    tplFavSave(); renderWorkflows();
+  }
+  function tplFavButton(name) {
+    const on = tplFavs.has(name);
+    return el("button", { class: "v-mini v-wf-fav" + (on ? " active" : ""), type: "button", "aria-pressed": on ? "true" : "false",
+      title: on ? "Remove from favourites" : "Add to favourites (first in the drawing's list)",
+      "aria-label": "Favourite " + name, onClick: () => tplFavToggle(name) }, on ? "★" : "☆");
   }
   let wfTplFilter = "all";
   try { const f = localStorage.getItem("volcano-tpl-filter"); if (WF_FILTERS.some((x) => x.k === f)) wfTplFilter = f; } catch (e) { /* ignore */ }
@@ -1111,6 +1130,8 @@
         onClick: () => { wfTplFilter = f.k; try { localStorage.setItem("volcano-tpl-filter", f.k); } catch (e) { /* ignore */ } renderWorkflows(); } },
         f.label + " (" + count(f.k) + ")"))));
     const connected = document.body.classList.contains("v-connected");
+    if (wfTplFilter === "fav" && !tplFavs.size)
+      box.append(el("p", { class: "v-hint" }, "No favourites yet. Tap ☆ next to a template's name (under All) to add it here and to the top of the list under the Volcano drawing."));
     let group = null;
     WF_TEMPLATES.forEach((t) => {
       const modes = tplVisibleModes(t, wfTplFilter);
@@ -1120,7 +1141,7 @@
       const note = tplModeNote(t, modes);
       box.append(el("div", { class: "v-wf-tpl" },
         el("div", { class: "v-wf-tpltext" },
-          el("strong", null, t.name),
+          el("span", { class: "v-wf-tplname" }, tplFavButton(t.name), el("strong", null, t.name)),
           el("span", { class: "v-wf-tplbadges" }, tplBadges(t, modes).map((b) => el("span", { class: "v-wf-badge" }, b))),
           el("span", { class: "v-wf-tpldesc" }, t.desc),
           note && el("span", { class: "v-wf-tpldesc v-wf-tplmodes" }, note)),
@@ -1576,11 +1597,15 @@
     return tplVisibleModes(t, "bag").concat(!t.temps && tplKind(t) === "single" ? [null] : []);
   }
   function devProfiles() {
-    const list = workflows.filter((w) => devMode === "all" || wfKindOf(w.actions) === devMode)
-      .map((w) => ({ key: "wf:" + w.id, group: "My workflows", label: w.name || "Untitled", run: () => runWorkflow(w) }));
-    WF_TEMPLATES.forEach((t) => devTemplateModes(t, devMode).forEach((m) => list.push({
-      key: "tpl:" + t.name + "|" + (m || ""), group: "Templates · " + (t.group || "From Project Onyx"),
-      label: tplName(t, m), run: () => wfRunTemplate(t, m) })));
+    const tpl = (t, m, group) => ({ key: "tpl:" + t.name + "|" + (m || ""), group, tpl: t.name,
+      label: tplName(t, m), run: () => wfRunTemplate(t, m) });
+    const list = [];
+    WF_TEMPLATES.filter((t) => tplFavs.has(t.name))
+      .forEach((t) => devTemplateModes(t, devMode).forEach((m) => list.push(tpl(t, m, "★ Favourites"))));
+    workflows.filter((w) => devMode === "all" || wfKindOf(w.actions) === devMode)
+      .forEach((w) => list.push({ key: "wf:" + w.id, group: "My workflows", label: w.name || "Untitled", run: () => runWorkflow(w) }));
+    WF_TEMPLATES.filter((t) => !tplFavs.has(t.name))
+      .forEach((t) => devTemplateModes(t, devMode).forEach((m) => list.push(tpl(t, m, "Templates · " + (t.group || "From Project Onyx")))));
     return list;
   }
   function renderDevicePicker() {
@@ -1601,7 +1626,7 @@
     const profiles = devProfiles();
     if (!profiles.some((p) => p.key === devPick)) devPick = profiles.length ? profiles[0].key : "";
     const sel = el("select", { class: "v-wf-type v-dev-select", "aria-label": "Workflow or template to run",
-      onChange: (e) => { devPick = e.target.value; saveDevPick(); } });
+      onChange: (e) => { devPick = e.target.value; saveDevPick(); renderDevicePicker(); } });
     let group = null, og = null;
     profiles.forEach((p) => {
       if (p.group !== group) { group = p.group; og = el("optgroup", { label: group }); sel.append(og); }
@@ -1612,7 +1637,9 @@
       onClick: () => { devMode = m; try { localStorage.setItem("volcano-dev-mode", m); } catch (e) { /* ignore */ } renderDevicePicker(); } }, label);
     box.append(el("div", { class: "v-wf-chips v-dev-modes", role: "group", "aria-label": "Show bag or whip sessions" },
       modeBtn("bag", "🛍 Bags"), modeBtn("whip", "💨 Whip"), modeBtn("all", "All")));
+    const picked = profiles.find((p) => p.key === devPick);
     box.append(el("div", { class: "v-dev-pick" }, sel,
+      picked && picked.tpl ? tplFavButton(picked.tpl) : null,
       el("button", { class: "v-btn", type: "button", disabled: !connected || !profiles.length,
         title: connected ? "Run the selected workflow or template" : "Connect to run",
         onClick: () => { const p = devProfiles().find((x) => x.key === devPick); if (p) p.run(); } }, "▶ Run")));
@@ -1793,7 +1820,7 @@
   const BACKUP_APP = "volcano-hybrid-control";
   function wfBackup() {
     const data = { app: BACKUP_APP, version: APP_VERSION, exported: new Date().toISOString(),
-      workflows: workflows.map((w) => ({ name: w.name, actions: w.actions })), presets: presets.slice(), history: sessLog.slice() };
+      workflows: workflows.map((w) => ({ name: w.name, actions: w.actions })), presets: presets.slice(), history: sessLog.slice(), favourites: [...tplFavs] };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -1823,18 +1850,22 @@
       .filter((h) => h && typeof h.started === "string" && !haveHist.has(histKey(h)))
       .map((h) => ({ name: String(h.name || "workflow"), started: h.started, secs: Math.max(0, Number(h.secs) || 0),
         bags: Math.max(0, Number(h.bags) || 0), outcome: String(h.outcome || "") }));
+    const newFavs = (data && Array.isArray(data.favourites) ? data.favourites : [])
+      .filter((n) => typeof n === "string" && !tplFavs.has(n) && WF_TEMPLATES.some((t) => t.name === n));
     let newPresets = data && Array.isArray(data.presets) ? sanitizePresets(data.presets) : null;
     if (newPresets && JSON.stringify(newPresets) === JSON.stringify(presets)) newPresets = null;   // already the same
     const msg = "Restore from " + file.name + "?\n\n" +
       "• Add " + plural(fresh.length, "workflow") + (incoming.length > fresh.length ? " (" + (incoming.length - fresh.length) + " already here, skipped)" : "") + "\n" +
       (newPresets && newPresets.length ? "• Replace your presets with the backup's " + newPresets.length + "\n" : "") +
       (newHist.length ? "• Add " + plural(newHist.length, "history entry").replace("entrys", "entries") + "\n" : "") +
+      (newFavs.length ? "• Add " + plural(newFavs.length, "favourite template") + "\n" : "") +
       "\nNothing else is removed.";
-    if (!fresh.length && !(newPresets && newPresets.length) && !newHist.length) { status("Nothing new in that backup.", "ok"); return; }
+    if (!fresh.length && !(newPresets && newPresets.length) && !newHist.length && !newFavs.length) { status("Nothing new in that backup.", "ok"); return; }
     if (!confirm(msg)) return;
     fresh.forEach((w) => workflows.push({ id: wfNewId(), name: w.name, actions: w.actions }));
     saveWorkflows();
     if (newPresets && newPresets.length) { presets = newPresets; savePresets(); renderPresets(); }
+    if (newFavs.length) { newFavs.forEach((n) => tplFavs.add(n)); tplFavSave(); }
     if (newHist.length) {
       sessLog = sessLog.concat(newHist).sort((a, b) => (b.started > a.started ? 1 : -1)).slice(0, HIST_MAX);
       histSave();

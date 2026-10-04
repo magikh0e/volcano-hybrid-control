@@ -305,6 +305,8 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
 .v-wf-tpls > .v-hint { margin-top: 0; }
 .v-wf-tpl { display: flex; gap: 0.6rem; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-top: 1px solid var(--edge-soft); }
 .v-wf-tpltext { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.v-wf-tplname { display: flex; align-items: center; gap: 0.45rem; }
+.v-wf-fav { padding: 0.2rem 0.4rem; font-size: 1rem; }
 .v-wf-tpldesc { opacity: 0.75; font-size: 0.85rem; }
 .v-wf-tpl .v-btn { flex: none; }
 .v-wf-tplbtns { display: flex; flex-direction: column; gap: 0.3rem; flex: none; }

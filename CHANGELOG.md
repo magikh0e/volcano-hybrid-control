@@ -9,6 +9,14 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-04
+
+### Added
+
+- Favourite templates: tap ☆ next to a template's name, or next to the dropdown under the
+  Volcano drawing. Favourites come first in that dropdown, have their own "★ Favourites" filter,
+  and are included in backups.
+
 ## [1.5.0] - 2026-10-04
 
 ### Added
@@ -173,7 +181,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.2.0...v1.3.0

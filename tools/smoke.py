@@ -19,7 +19,8 @@ Checks:
     before the fill, one fill, heat off at the end, logged in session history
   - drop the Bluetooth link mid-run: it reconnects and finishes
   - every theme applies, °F app units show on the drawing
-  - Backup downloads workflows, presets and history
+  - a starred template leads the drawing's list and the Favourites filter
+  - Backup downloads workflows, presets, history and favourites
   - a Help contents link opens its FAQ entry
   - in the background, notifications say fit a bag, bag full, complete
   - a new version (served from a temporary copy of the site) shows the
@@ -141,8 +142,17 @@ class Smoke:
                    f"session history: {h[0] if h else 'empty'}")
         self.check(page.title() == "Volcano Hybrid Control" or "·" not in page.title(), "tab title restored after the run")
 
-        # Backup carries workflows, presets and history
+        # Favourite a template: first in the drawing's list, counted in the filter
         page.click(".v-tab[data-tab='workflows']")
+        if page.get_attribute("button:has-text('📋 Templates')", "aria-expanded") != "true":
+            page.click("button:has-text('📋 Templates')")
+        page.click(".v-wf-tpl:has(strong:text-is('Quick Bag 185 °C')) .v-wf-fav")
+        first = page.evaluate("""() => { const g = document.querySelector("#v-dev-run select optgroup");
+          return g.label + ": " + [...g.querySelectorAll("option")].map((o) => o.text).join(", "); }""")
+        self.check(first.startswith("★ Favourites: Quick Bag 185 °C"), f"starred template leads the drawing's list ({first})")
+        self.check("(1)" in page.text_content(".v-wf-filters button:has-text('Favourites')"), "Favourites filter counts it")
+
+        # Backup carries workflows, presets, history and favourites
         with page.expect_download() as dl:
             page.click("button:has-text('⤓ Backup')")
         data = json.loads(open(dl.value.path(), encoding="utf-8").read())
@@ -150,8 +160,8 @@ class Smoke:
         unnamed = page.evaluate(r"""() => [...document.querySelectorAll("button")].filter((b) => b.offsetParent &&
           !(b.getAttribute("aria-label") || b.textContent.trim().replace(/[^\p{L}\p{N}]/gu, ""))).map((b) => b.outerHTML.slice(0, 80))""")
         self.check(not unnamed, "every visible button has a readable name" + (f" ({unnamed[:3]})" if unnamed else ""))
-        self.check(all(k in data for k in ("workflows", "presets", "history")) and len(data["history"]) == 1,
-                   "backup has workflows, presets and history")
+        self.check(all(k in data for k in ("workflows", "presets", "history")) and len(data["history"]) == 1
+                   and data.get("favourites") == ["Quick Bag 185 °C"], "backup has workflows, presets, history and favourites")
         ctx.close()
 
         # Link drops mid-run: reconnect and finish. The page is "in the background"
