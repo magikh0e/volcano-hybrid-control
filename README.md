@@ -1,5 +1,7 @@
 # volcano-hybrid-control
 
+[![Smoke test](https://github.com/magikh0e/volcano-hybrid-control/actions/workflows/smoke.yml/badge.svg)](https://github.com/magikh0e/volcano-hybrid-control/actions/workflows/smoke.yml)
+
 [![Volcano Hybrid Web App — Bluetooth control in your browser](og.jpg)](https://volcano.magikh0e.pl/)
 
 Control a **Storz &amp; Bickel Volcano Hybrid** straight from your browser over

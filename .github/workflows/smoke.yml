@@ -1,0 +1,24 @@
+name: Smoke test
+
+# tools/smoke.py drives the app against the simulated Volcano in headless
+# Chrome (preinstalled on GitHub's Ubuntu runners).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install playwright
+      - run: python tools/smoke.py

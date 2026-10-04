@@ -82,4 +82,5 @@ pip install --user playwright
 ```
 
 `--headed` shows the browser. `tools/deploy.py` runs it before every upload (skip with
-`--no-smoke`); without Playwright it warns and carries on.
+`--no-smoke`); without Playwright it warns and carries on. GitHub Actions also runs it on
+every push to `main` and every pull request (`.github/workflows/smoke.yml`).
