@@ -2381,7 +2381,8 @@
         el("strong", null, "Demo:"), " a simulated Volcano. Nothing here talks to a real device, and what you save stays in this tab. ",
         el("a", { href: location.pathname }, "Exit demo"),
         el("span", { class: "v-demo-speedrow" }, "Speed ", speeds)));
-      status("Demo: click Connect to start the simulated Volcano.");
+      status("Demo: connecting to the simulated Volcano…");
+      connect();   // no device picker in the demo, so it starts connected
     } else status("Ready. Click Connect and pick your Volcano.");
     setTimeout(importSharedWorkflow, 0);   // offer to import a #wf=… share link, if present
   }

@@ -9,6 +9,18 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-10-04
+
+### Changed
+
+- The demo connects to its simulated Volcano by itself, so it's ready to run as soon as it opens.
+
+### Fixed
+
+- Cloudflare's Rocket Loader was rewriting the site's scripts and running them late and in its
+  own order, which could stop the app or the demo starting in some browsers. The scripts are now
+  marked to be left alone.
+
 ## [2.2.0] - 2026-10-04
 
 ### Added
@@ -254,7 +266,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.2.1...HEAD
+[2.2.1]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.9.0...v2.0.0

@@ -26,7 +26,7 @@ Checks:
   - deleting a workflow, an action or a preset happens at once and Undo
     (or Ctrl+Z) puts it back
   - ▲ / ▼ reorder saved workflows, keeping focus on the moved card
-  - the demo (?demo) connects to "Demo Volcano" and keeps its data out of
+  - the demo (?demo) connects itself to "Demo Volcano" and keeps its data out of
     the real storage
   - the temperature graph draws; the end-of-session summary opens the note
     editor, and a note and rating save and back up
@@ -386,8 +386,7 @@ class Smoke:
         page = ctx.new_page(); self.watch(page)
         page.goto(f"{self.base}/?demo")
         page.wait_for_selector(".v-demo-bar", timeout=10000)
-        page.click("#v-connect")
-        page.wait_for_function("() => document.body.classList.contains('v-connected')", timeout=10000)
+        page.wait_for_function("() => document.body.classList.contains('v-connected')", timeout=10000)   # connects itself
         page.click(".v-tab[data-tab='workflows']")
         page.click("button:has-text('+ New workflow')")
         kept = page.evaluate("""() => ({ real: localStorage.getItem("volcano-workflows"),
