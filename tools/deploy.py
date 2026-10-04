@@ -74,6 +74,7 @@ EXCLUDES = [
     ".claude/",
     "tools/",
     "deploy/",     # server config (vhost) + runbook: kept in git, never served
+    "promo/",      # promo videos, kept locally (git-ignored)
     ".env",
     ".env.example",
     ".gitignore",
