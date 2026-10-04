@@ -579,10 +579,14 @@ body:not(.v-connected) .v-session-line { display: none; }
 @media (max-width: 640px) { .v-toc { grid-template-columns: 1fr; } }
 :target { scroll-margin-top: 1rem; }
 
-/* Undo bar after a delete */
-.v-undo {
+/* Bars at the bottom: Undo after a delete, the session summary */
+.v-toasts {
   position: fixed; left: 50%; bottom: 1rem; transform: translateX(-50%); z-index: 50;
-  display: flex; align-items: center; gap: 0.7rem; max-width: calc(100vw - 2rem);
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  width: max-content; max-width: calc(100vw - 2rem);
+}
+.v-undo {
+  display: flex; align-items: center; gap: 0.7rem; max-width: 100%;
   padding: 0.5rem 0.6rem 0.5rem 0.9rem;
   background: var(--panel); color: var(--text);
   border: 1px solid var(--accent); border-radius: 8px;

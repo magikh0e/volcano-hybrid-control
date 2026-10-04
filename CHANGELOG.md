@@ -9,6 +9,19 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-04
+
+### Added
+
+- When a session ends (or is stopped), a bar at the bottom sums it up, for example "Done: Quick
+  Bag 185 °C · 1 bag in 0:40.", with "✎ Add a note", which opens that session's note in the
+  history.
+
+### Changed
+
+- New screenshots in the README and the install dialog, showing the temperature graph, session
+  history with notes, and the Phosphor theme.
+
 ## [2.0.0] - 2026-10-04
 
 ### Added
@@ -226,7 +239,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.9.0...v2.0.0
 [1.9.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.7.0...v1.8.0

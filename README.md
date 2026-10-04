@@ -15,15 +15,20 @@ framework, no dependencies; installable as a PWA and works offline.
 installable app. No Volcano to hand? [**Try the demo**](https://volcano.magikh0e.pl/?demo), which
 runs against a simulated one in any browser.
 
-A session in progress on a laptop, with the drawing filling a bag on the left and the
-template library on the right:
+A session in progress on a laptop: the drawing filling a bag, the temperature graph of the
+climb under it, and the template library on the right:
 
-<img src="assets/screenshots/session-wide.png" alt="Wide layout: the interactive Volcano drawing filling a bag (FILL 0:25 on its screen) beside the Workflows tab, with the running banner and template list" width="820">
+<img src="assets/screenshots/session-wide.png" alt="Wide layout: the Volcano drawing filling a bag (FILL 0:14 on its screen) with a temperature graph below, beside the Workflows tab with the running banner and template list" width="820">
 
-Settings with the theme picker, a whip session on a phone, and the console:
+Session history with notes and ratings, and the summary that offers to add one when a session
+ends:
 
-<img src="assets/screenshots/settings-wide.png" alt="Settings: device options, theme picker (Amber, Phosphor, Ice, Neon, Light, High contrast), app units and install" width="520">
-<img src="assets/screenshots/control-narrow.png" alt="Phone: the Volcano drawing with a whip hose, vapor flowing, heating to 180 °C" width="200">
+<img src="assets/screenshots/history-wide.png" alt="Session history: five sessions with times, bags and outcomes, three with star ratings and notes, and a 'Done: Quick Bag 185 °C · 1 bag in 0:40' bar with Add a note" width="820">
+
+Settings with the theme picker (Phosphor here), a whip session on a phone, and the console:
+
+<img src="assets/screenshots/settings-wide.png" alt="Settings in the Phosphor theme: device options, theme picker (Amber, Phosphor, Ice, Neon, Light, High contrast), app units and install" width="520">
+<img src="assets/screenshots/control-narrow.png" alt="Phone: the Volcano drawing with a whip hose, vapor flowing, heating to 180 °C, and the temperature graph" width="200">
 <img src="assets/screenshots/console-narrow.png" alt="Phone: the console listing its commands and a status readout" width="200">
 
 ---

@@ -28,7 +28,8 @@ Checks:
   - ▲ / ▼ reorder saved workflows, keeping focus on the moved card
   - the demo (?demo) connects to "Demo Volcano" and keeps its data out of
     the real storage
-  - the temperature graph draws; a history note and rating save and back up
+  - the temperature graph draws; the end-of-session summary opens the note
+    editor, and a note and rating save and back up
   - keyboard shortcuts H and + drive the heater and target; preset labels show
   - a Help contents link opens its FAQ entry
   - in the background, notifications say fit a bag, bag full, complete
@@ -176,9 +177,12 @@ class Smoke:
         self.check(first.startswith("★ Favourites: Quick Bag 185 °C"), f"starred template leads the drawing's list ({first})")
         self.check("(1)" in page.text_content(".v-wf-filters button:has-text('Favourites')"), "Favourites filter counts it")
 
-        # A note and rating on the history row
-        page.evaluate("document.querySelector('.v-wf-history').open = true")
-        page.click(".v-hist-row .v-hist-notebtn")
+        # The end-of-session summary leads to a note and rating on that history row
+        done = page.text_content("#v-done .v-undo-text") if page.is_visible("#v-done") else "no summary bar"
+        self.check(done.startswith("Done: Quick Bag 185 °C · 1 bag in"), f"session summary: {done}")
+        page.click("#v-done .v-done-note")
+        self.check(page.evaluate("document.activeElement.classList.contains('v-hist-notein')"),
+                   "Add a note opens that session's note editor")
         page.click(".v-hist-noteedit .v-hist-star:nth-child(4)")
         page.fill(".v-hist-notein", "Blue Dream")
         page.click(".v-hist-noteedit .v-btn")

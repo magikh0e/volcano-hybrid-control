@@ -35,10 +35,17 @@
   "screenshots": [
     {
       "src": "assets/screenshots/session-wide.png",
+      "sizes": "1280x900",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "A bag session: the Volcano drawing filling a bag, the temperature graph, and the template library"
+    },
+    {
+      "src": "assets/screenshots/history-wide.png",
       "sizes": "1280x800",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "A bag session: the Volcano drawing filling a bag beside the template library"
+      "label": "Session history with notes and ratings, and the summary after a session"
     },
     {
       "src": "assets/screenshots/settings-wide.png",
@@ -52,7 +59,7 @@
       "sizes": "780x1688",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "A whip session on a phone, vapor flowing through the hose"
+      "label": "A whip session on a phone: vapor through the hose and the temperature graph"
     },
     {
       "src": "assets/screenshots/console-narrow.png",

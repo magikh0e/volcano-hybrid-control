@@ -20,6 +20,9 @@
   // and ?fake=50 runs the app's timers 50x. The app starts once the simulator is in.
   const DEMO = /[?&]demo\b/.test(location.search);
   const FAKE = DEMO || (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && /[?&]fake\b/.test(location.search));
+  // Bars at the bottom of the screen time out in real time, even when ?fake=N
+  // speeds up the app's other timers (this runs before the simulator loads).
+  const uiTimeout = window.setTimeout.bind(window);
   const fakeReady = !FAKE ? Promise.resolve() : new Promise((done) => {
     const s = document.createElement("script");
     s.src = "demo-volcano.js";
@@ -651,6 +654,12 @@
   // instead of asking first. A newer delete replaces the older one's Undo.
   const UNDO_MS = 8000;
   let undoFn = null, undoTimer = 0;
+  // Bars at the bottom of the screen (Undo, session summary) stack in one place.
+  function toastStack() {
+    let box = $("v-toasts");
+    if (!box) { box = el("div", { id: "v-toasts", class: "v-toasts" }); document.body.append(box); }
+    return box;
+  }
   function undoable(msg, undo) {
     let bar = $("v-undo");
     if (!bar) {
@@ -658,13 +667,50 @@
         el("span", { class: "v-undo-text" }),
         el("button", { class: "v-btn", type: "button", onClick: undoNow }, "Undo"),
         el("button", { class: "v-mini", type: "button", title: "Dismiss", onClick: undoDone }, "✕"));
-      document.body.append(bar);
+      toastStack().append(bar);
     }
     bar.querySelector(".v-undo-text").textContent = msg;
     bar.hidden = false;
     undoFn = undo;
     clearTimeout(undoTimer);
-    undoTimer = setTimeout(undoDone, UNDO_MS);
+    undoTimer = uiTimeout(undoDone, UNDO_MS);
+  }
+
+  // When a session ends: what it did, and a shortcut to note how it went.
+  const DONE_MS = 30000;
+  let doneTimer = 0;
+  function sessionDone(h) {
+    let bar = $("v-done");
+    if (!bar) {
+      bar = el("div", { id: "v-done", class: "v-undo v-done", role: "status" },
+        el("span", { class: "v-undo-text" }),
+        el("button", { class: "v-btn v-done-note", type: "button" }, "✎ Add a note"),
+        el("button", { class: "v-mini", type: "button", title: "Dismiss", onClick: doneHide }, "✕"));
+      toastStack().append(bar);
+    }
+    const stopped = h.outcome !== "complete";
+    bar.querySelector(".v-undo-text").textContent = (stopped ? "Stopped: " : "Done: ") + h.name + " · " +
+      (h.bags ? plural(h.bags, "bag") + " in " : "") + fmtDur(h.secs || 0) + ".";
+    bar.querySelector(".v-done-note").onclick = () => { doneHide(); histNoteAt(h); };
+    bar.hidden = false;
+    clearTimeout(doneTimer);
+    // Out of sight (another app, screen off): start counting once it's back on screen.
+    const arm = () => { doneTimer = uiTimeout(doneHide, DONE_MS); };
+    if (document.visibilityState === "visible") arm();
+    else document.addEventListener("visibilitychange", function once() {
+      if (document.visibilityState !== "visible") return;
+      document.removeEventListener("visibilitychange", once); arm();
+    });
+  }
+  function doneHide() { clearTimeout(doneTimer); const bar = $("v-done"); if (bar) bar.hidden = true; }
+  // Open a history row's note editor: Workflows tab, history open, row in view.
+  function histNoteAt(h) {
+    const tab = document.querySelector('.v-tab[data-tab="workflows"]');
+    if (tab) tab.click();
+    histOpen = true; histNoteOpen = histKey(h);
+    renderWorkflows();
+    const input = document.querySelector(".v-hist-notein");
+    if (input) { input.scrollIntoView({ block: "center" }); input.focus(); }
   }
   function undoDone() {
     undoFn = null; clearTimeout(undoTimer);
@@ -1640,8 +1686,10 @@
       wfKeepAwake(false);
       clearInterval(sessTimer);
       document.title = BASE_TITLE;
-      histAdd({ name: wfRunName, started: new Date(runStarted).toISOString(),
-        secs: Math.round((Date.now() - runStarted) / 1000), bags: runBags, outcome: runOutcome, src: runSrc });
+      const entry = { name: wfRunName, started: new Date(runStarted).toISOString(),
+        secs: Math.round((Date.now() - runStarted) / 1000), bags: runBags, outcome: runOutcome, src: runSrc };
+      histAdd(entry);
+      if (runOutcome !== "error") sessionDone(sessLog[0] === entry ? entry : sessLog.find((x) => histKey(x) === histKey(entry)) || entry);
       wfRunning = false; wfRunId = null;
       document.body.classList.remove("v-running");
       if (svc && !pollTimer) pollTimer = setInterval(pollStatus, 2000);   // resume polling
