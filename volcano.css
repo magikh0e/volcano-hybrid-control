@@ -550,14 +550,23 @@ body:not(.v-connected) .v-session-line { display: none; }
 .v-wf-history { margin: 1rem 0 0.2rem; }
 .v-wf-history > summary { cursor: pointer; font-weight: 600; }
 .v-hist { list-style: none; margin: 0.5rem 0; padding: 0; display: flex; flex-direction: column; gap: 0.25rem; }
-.v-hist-row { display: grid; grid-template-columns: 10.5rem 1fr auto 2rem; gap: 0.6rem; align-items: center; font-size: 0.85rem;
+.v-hist-row { display: grid; grid-template-columns: 10.5rem 1fr auto auto; gap: 0.6rem; align-items: center; font-size: 0.85rem;
   padding: 0.25rem 0.4rem; border-left: 3px solid var(--ok); background: var(--panel); }
 .v-hist-stop { border-left-color: var(--warn); }
 .v-hist-err { border-left-color: var(--danger-strong); }
 .v-hist-when { opacity: 0.75; }
 .v-hist-meta { opacity: 0.85; white-space: nowrap; }
 .v-hist-again { padding: 0.2rem 0.4rem; justify-self: end; }
-@media (max-width: 560px) { .v-hist-row { grid-template-columns: 1fr auto 2rem; } .v-hist-when { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .v-hist-row { grid-template-columns: 1fr auto auto; } .v-hist-when { grid-column: 1 / -1; } }
+.v-hist-btns { display: flex; gap: 0.3rem; justify-self: end; }
+.v-hist-btns .v-mini { padding: 0.2rem 0.4rem; }
+.v-hist-gone { width: 1.6rem; }
+.v-hist-note { grid-column: 1 / -1; opacity: 0.85; overflow-wrap: anywhere; }
+.v-hist-noteedit { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.v-hist-stars { display: flex; gap: 0.15rem; }
+.v-hist-star { padding: 0.15rem 0.3rem; }
+.v-hist-notein { flex: 1 1 12rem; min-width: 0; font: inherit; color: var(--text);
+  background: var(--inset); border: 1px solid var(--edge); border-radius: 6px; padding: 0.35rem 0.5rem; }
 
 /* Help: "On this page" jump list */
 .v-toc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 0.4rem 2rem; margin: 0.6rem 0 1.4rem;
@@ -581,3 +590,24 @@ body:not(.v-connected) .v-session-line { display: none; }
 }
 .v-undo[hidden] { display: none; }
 .v-undo-text { overflow-wrap: anywhere; }
+
+/* Demo */
+.v-demo-bar { margin: 0 0 0.7rem; padding: 0.45rem 0.7rem; border-left: 3px solid var(--warn); background: var(--panel); }
+.v-demo .v-trydemo { display: none; }
+
+/* Temperature graph under Fill bag */
+.v-graph { margin: 0.7rem 0 0; }
+.v-graph[hidden] { display: none; }
+.v-graph-plot { position: relative; height: 80px; border: 1px solid var(--edge-soft); border-radius: 6px; background: var(--inset); overflow: hidden; }
+.v-graph-plot svg { display: block; width: 100%; height: 100%; }
+.vg-fill { fill: var(--accent); fill-opacity: 0.18; }
+.vg-target { fill: none; stroke: var(--text); stroke-opacity: 0.55; stroke-width: 1.5; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+.vg-cur { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.v-graph-hi, .v-graph-lo { position: absolute; left: 0.35rem; font-size: 0.7rem; opacity: 0.85; }
+.v-graph-hi { top: 0.15rem; }
+.v-graph-lo { bottom: 0.15rem; }
+.v-graph-cap { margin: 0.25rem 0 0; font-size: 0.8rem; opacity: 0.85; }
+
+/* Preset label field */
+.v-preset-label { width: 9rem; font: inherit; color: var(--text); background: var(--inset);
+  border: 1px solid var(--edge); border-radius: 6px; padding: 0.35rem 0.5rem; }

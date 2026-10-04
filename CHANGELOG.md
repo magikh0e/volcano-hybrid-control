@@ -9,6 +9,23 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-04
+
+### Added
+
+- Demo: "Try the demo" (or `?demo`) runs the app against a simulated Volcano, in any browser,
+  including ones without Web Bluetooth. Demo data stays in that browser tab, apart from your
+  real workflows and history.
+- A temperature graph under Fill bag: the last 10 minutes of chamber temperature against the
+  target, with each fill shaded.
+- Notes on session history: ✎ on a row adds a note and a 1–5 star rating, kept in backups.
+- Keyboard shortcuts while connected: − and + for the target, H heater, A air, F fill bag.
+- Preset labels: an optional name on each preset chip, such as "Terps 179°".
+
+### Fixed
+
+- Pressing HEAT or AIR twice quickly could switch it on twice instead of on and back off.
+
 ## [1.9.0] - 2026-10-04
 
 ### Added
@@ -209,7 +226,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.9.0...v2.0.0
 [1.9.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v1.6.0...v1.7.0

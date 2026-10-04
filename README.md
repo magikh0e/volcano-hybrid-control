@@ -12,7 +12,8 @@ Just static files — HTML, CSS, and a little vanilla JS. No build step, no
 framework, no dependencies; installable as a PWA and works offline.
 
 **Live:** [**volcano.magikh0e.pl**](https://volcano.magikh0e.pl/) — the standalone,
-installable app.
+installable app. No Volcano to hand? [**Try the demo**](https://volcano.magikh0e.pl/?demo), which
+runs against a simulated one in any browser.
 
 A session in progress on a laptop, with the drawing filling a bag on the left and the
 template library on the right:

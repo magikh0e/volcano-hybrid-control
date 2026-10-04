@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Smoke test: serve the repo locally and drive the app against the simulated
-Volcano (tools/fake-volcano.js) in headless Chrome. tools/deploy.py runs it
+Volcano (demo-volcano.js) in headless Chrome. tools/deploy.py runs it
 before every upload.
 
 Usage:
@@ -26,6 +26,10 @@ Checks:
   - deleting a workflow, an action or a preset happens at once and Undo
     (or Ctrl+Z) puts it back
   - ▲ / ▼ reorder saved workflows, keeping focus on the moved card
+  - the demo (?demo) connects to "Demo Volcano" and keeps its data out of
+    the real storage
+  - the temperature graph draws; a history note and rating save and back up
+  - keyboard shortcuts H and + drive the heater and target; preset labels show
   - a Help contents link opens its FAQ entry
   - in the background, notifications say fit a bag, bag full, complete
   - a new version (served from a temporary copy of the site) shows the
@@ -46,9 +50,11 @@ from urllib.request import urlopen
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SPEED = 40          # ?fake=N: app timers run N times faster
-INIT = """window.confirm = () => true; window.alert = () => {};
-// Chrome on Linux (CI) has no navigator.bluetooth. The app checks for it at load,
-// before tools/fake-volcano.js arrives, so give it one for the fake to take over.
+INIT = "window.confirm = () => true; window.alert = () => {};"
+# For pages loaded without the simulator (the update test) on browsers with no
+# Web Bluetooth at all, such as Chrome on Linux in CI: without it the app shows
+# its "unsupported" note instead of the panel.
+NO_BT = """
 if (!navigator.bluetooth) Object.defineProperty(navigator, "bluetooth", { configurable: true,
   value: { requestDevice: () => Promise.reject(new DOMException("No Bluetooth here", "NotFoundError")) } });
 """
@@ -157,6 +163,8 @@ class Smoke:
         self.check(len(h) == 1 and h[0]["outcome"] == "complete" and h[0]["bags"] == 1,
                    f"session history: {h[0] if h else 'empty'}")
         self.check(page.title() == "Volcano Hybrid Control" or "·" not in page.title(), "tab title restored after the run")
+        page.wait_for_function("() => !document.getElementById('v-graph').hidden", timeout=10000)
+        self.check(page.locator("#v-graph-svg .vg-cur").count() == 1, f"temperature graph: {page.text_content('#v-graph-cap')}")
 
         # Favourite a template: first in the drawing's list, counted in the filter
         page.click(".v-tab[data-tab='workflows']")
@@ -168,6 +176,16 @@ class Smoke:
         self.check(first.startswith("★ Favourites: Quick Bag 185 °C"), f"starred template leads the drawing's list ({first})")
         self.check("(1)" in page.text_content(".v-wf-filters button:has-text('Favourites')"), "Favourites filter counts it")
 
+        # A note and rating on the history row
+        page.evaluate("document.querySelector('.v-wf-history').open = true")
+        page.click(".v-hist-row .v-hist-notebtn")
+        page.click(".v-hist-noteedit .v-hist-star:nth-child(4)")
+        page.fill(".v-hist-notein", "Blue Dream")
+        page.click(".v-hist-noteedit .v-btn")
+        h = self.history(page)
+        self.check(h[0].get("rating") == 4 and h[0].get("note") == "Blue Dream"
+                   and "★★★★☆ Blue Dream" in page.text_content(".v-hist-row .v-hist-note"), "history note and rating saved")
+
         # Backup carries workflows, presets, history and favourites
         with page.expect_download() as dl:
             page.click("button:has-text('⤓ Backup')")
@@ -177,7 +195,8 @@ class Smoke:
           !(b.getAttribute("aria-label") || b.textContent.trim().replace(/[^\p{L}\p{N}]/gu, ""))).map((b) => b.outerHTML.slice(0, 80))""")
         self.check(not unnamed, "every visible button has a readable name" + (f" ({unnamed[:3]})" if unnamed else ""))
         self.check(all(k in data for k in ("workflows", "presets", "history")) and len(data["history"]) == 1
-                   and data.get("favourites") == ["Quick Bag 185 °C"], "backup has workflows, presets, history and favourites")
+                   and data.get("favourites") == ["Quick Bag 185 °C"] and data["history"][0].get("note") == "Blue Dream",
+                   "backup has workflows, presets, history (with notes) and favourites")
 
         # Run again from history: a recorded template, then an older entry with no source
         page.evaluate("document.querySelector('.v-wf-history').open = true")
@@ -199,6 +218,21 @@ class Smoke:
         page.wait_for_function("() => JSON.parse(localStorage.getItem('volcano-history') || '[]').length === 3", timeout=60000)
         h = self.history(page)
         self.check(h[0].get("src", {}).get("tpl") == "Quick Bag 185 °C", "an entry without a source is found by name and runs again")
+
+        # Keyboard shortcuts (not while typing in a field)
+        page.evaluate("document.activeElement && document.activeElement.blur()")
+        page.keyboard.press("h")
+        page.wait_for_function("() => fakeVolcano.state.heat === true", timeout=5000)
+        page.keyboard.press("h")
+        page.wait_for_function("() => fakeVolcano.state.heat === false", timeout=5000)
+        was = page.evaluate("fakeVolcano.state.set")
+        page.keyboard.press("+")
+        page.wait_for_function("(was) => fakeVolcano.state.set === was + 1", arg=was, timeout=5000)
+        page.click(".v-tab[data-tab='console']")
+        page.focus("#v-term-in")
+        page.keyboard.press("h")
+        self.check(page.evaluate("fakeVolcano.state.heat") is False and page.input_value("#v-term-in") == "h",
+                   "H toggles the heater, + raises the target; typing in a field isn't a shortcut")
         ctx.close()
 
         # Duplicate saved ids (from older versions) are repaired on load
@@ -237,6 +271,12 @@ class Smoke:
         fewer = page.evaluate("[...document.querySelectorAll('#v-presets button[data-temp]')].map((b) => b.dataset.temp).join(',')")
         page.click("#v-undo .v-btn")
         self.check(fewer != before and page.evaluate("[...document.querySelectorAll('#v-presets button[data-temp]')].map((b) => b.dataset.temp).join(',')") == before, f"remove a preset, then Undo ({before})")
+        page.fill("#v-preset-add-in", "185")
+        page.fill("#v-preset-add-label", "Clouds")
+        page.click("#v-preset-add")
+        page.reload()
+        chip = page.text_content("#v-presets button[data-temp='185']")
+        self.check(chip.startswith("Clouds 185°"), f"preset label saved and shown ({chip})")
         ctx.close()
 
         # Link drops mid-run: reconnect and finish. The page is "in the background"
@@ -283,6 +323,22 @@ class Smoke:
         self.check(page.locator("a[href='/']").count() > 0 or page.locator("a").count() > 0, "404 page loads")
         ctx.close()
 
+        # The public demo: own storage, simulated device
+        ctx = browser.new_context(viewport={"width": 1280, "height": 800}, service_workers="block")
+        ctx.add_init_script(INIT)
+        page = ctx.new_page(); self.watch(page)
+        page.goto(f"{self.base}/?demo")
+        page.wait_for_selector(".v-demo-bar", timeout=10000)
+        page.click("#v-connect")
+        page.wait_for_function("() => document.body.classList.contains('v-connected')", timeout=10000)
+        page.click(".v-tab[data-tab='workflows']")
+        page.click("button:has-text('+ New workflow')")
+        kept = page.evaluate("""() => ({ real: localStorage.getItem("volcano-workflows"),
+          demo: sessionStorage.getItem("volcano-demo:volcano-workflows") })""")
+        self.check(page.text_content("#v-dev-state") == "Demo Volcano" and kept["real"] is None and bool(kept["demo"]),
+                   "demo connects to Demo Volcano and saves only to its own storage")
+        ctx.close()
+
         self.update(browser)
         self.check(not self.errors, "no script errors" + ("".join("\n          " + e for e in self.errors[:8]) if self.errors else ""))
 
@@ -295,7 +351,7 @@ class Smoke:
         srv, base = serve(site)
         try:
             ctx = browser.new_context(viewport={"width": 1280, "height": 800})
-            ctx.add_init_script(INIT)
+            ctx.add_init_script(INIT + NO_BT)
             page = ctx.new_page(); self.watch(page)
             page.goto(base + "/")
             page.wait_for_function("() => !!navigator.serviceWorker.controller", timeout=15000)

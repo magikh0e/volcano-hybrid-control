@@ -60,6 +60,8 @@
       <li><a href="#faq-does-it-work-over-the-internet-or-as-remote-cont">Does it work over the internet, or as remote control?</a></li>
       <li><a href="#faq-do-i-need-an-app-or-account-where-s-my-data">Do I need an app or account? Where's my data?</a></li>
       <li><a href="#faq-can-i-use-this-and-home-assistant-at-the-same-ti">Can I use this and Home Assistant at the same time?</a></li>
+      <li><a href="#faq-can-i-try-it-without-a-volcano">Can I try it without a Volcano?</a></li>
+      <li><a href="#faq-are-there-keyboard-shortcuts">Are there keyboard shortcuts?</a></li>
       <li><a href="#faq-what-s-the-volcano-drawing-on-the-control-tab">What's the Volcano drawing on the Control tab?</a></li>
       <li><a href="#faq-what-happens-if-the-connection-drops-during-a-se">What happens if the connection drops during a session?</a></li>
       <li><a href="#faq-can-i-change-the-colours">Can I change the colours?</a></li>
@@ -113,9 +115,17 @@
     <summary>Can I use this and Home Assistant at the same time?</summary>
     <p>No &mdash; the Volcano accepts only one connection. Disconnect one to use the other.</p>
   </details>
+  <details id="faq-can-i-try-it-without-a-volcano">
+    <summary>Can I try it without a Volcano?</summary>
+    <p>Yes: open the <a href="./?demo">demo</a> (or <strong>Try the demo</strong> at the top of the app). It connects to a simulated Volcano that heats, runs the pump and counts down like the real one, so you can try templates, the drawing, history and everything else. It works in any browser, including ones without Web Bluetooth. What you save in the demo stays in that browser tab and never mixes with your real workflows; <strong>Exit demo</strong> goes back to the normal app.</p>
+  </details>
+  <details id="faq-are-there-keyboard-shortcuts">
+    <summary>Are there keyboard shortcuts?</summary>
+    <p>Yes, on any tab while connected: <kbd>&minus;</kbd> and <kbd>+</kbd> lower and raise the target (hold to keep going), <kbd>H</kbd> switches the heater, <kbd>A</kbd> the air (fan), and <kbd>F</kbd> starts or cancels a bag fill. They're ignored while you're typing in a field, such as the Console. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the latest delete.</p>
+  </details>
   <details id="faq-what-s-the-volcano-drawing-on-the-control-tab">
     <summary>What's the Volcano drawing on the Control tab?</summary>
-    <p>A control panel laid out like the real one. The screen shows the current temperature (top) and the target (bottom), with a dot that lights while the heater is on. <strong>&minus;</strong> and <strong>+</strong> change the target and send it to the Volcano a moment after your last press (tap the screen to type an exact target); <strong>HEAT</strong> and <strong>AIR</strong> switch the heater and fan, lighting up while they're on. Below it, choose <strong>Bags</strong>, <strong>Whip</strong> or <strong>All</strong>, pick a saved workflow or template and press <strong>&#9654; Run</strong>; its progress and Stop buttons show right there.</p>
+    <p>A control panel laid out like the real one. The screen shows the current temperature (top) and the target (bottom), with a dot that lights while the heater is on. <strong>&minus;</strong> and <strong>+</strong> change the target and send it to the Volcano a moment after your last press (tap the screen to type an exact target); <strong>HEAT</strong> and <strong>AIR</strong> switch the heater and fan, lighting up while they're on. Below it, choose <strong>Bags</strong>, <strong>Whip</strong> or <strong>All</strong>, pick a saved workflow or template and press <strong>&#9654; Run</strong>; its progress and Stop buttons show right there. Under <strong>Fill bag</strong>, a graph shows the last 10 minutes: the chamber temperature as a solid line, the target dashed, and each fill shaded.</p>
   </details>
   <details id="faq-what-happens-if-the-connection-drops-during-a-se">
     <summary>What happens if the connection drops during a session?</summary>
@@ -192,7 +202,7 @@
   </details>
   <details id="faq-is-there-a-history-of-my-sessions">
     <summary>Is there a history of my sessions?</summary>
-    <p>Yes. On the Workflows tab, <strong>&#128220; Session history</strong> lists each workflow or template you've run: when, how long, how many bags, and whether it finished, was stopped or hit an error. <strong>&#8635;</strong> on a row runs that session again (the saved workflow, the template in the same mode, or the ladder you built). It's stored in this browser (the latest 200) and included in <strong>&#10515; Backup</strong>. To tweak a saved workflow without losing the original, use <strong>&#10697;</strong> on its card to duplicate it. <strong>&#9650;</strong> and <strong>&#9660;</strong> move a saved workflow up or down, which also sets its place in the dropdown under the drawing.</p>
+    <p>Yes. On the Workflows tab, <strong>&#128220; Session history</strong> lists each workflow or template you've run: when, how long, how many bags, and whether it finished, was stopped or hit an error. <strong>&#9998;</strong> on a row adds a note and a 1&ndash;5 star rating (the strain, how it hit), kept with the entry and in backups. <strong>&#8635;</strong> on a row runs that session again (the saved workflow, the template in the same mode, or the ladder you built). It's stored in this browser (the latest 200) and included in <strong>&#10515; Backup</strong>. To tweak a saved workflow without losing the original, use <strong>&#10697;</strong> on its card to duplicate it. <strong>&#9650;</strong> and <strong>&#9660;</strong> move a saved workflow up or down, which also sets its place in the dropdown under the drawing.</p>
   </details>
   <details id="faq-i-deleted-something-by-mistake">
     <summary>I deleted something by mistake</summary>

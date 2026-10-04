@@ -62,12 +62,13 @@ Changes collect under `## [Unreleased]` in `CHANGELOG.md` as they land. To relea
 
 ## Testing without a Volcano
 
-`tools/fake-volcano.js` simulates a Volcano Hybrid over the same Bluetooth IDs. Serve the
-repo locally (for example `python -m http.server 8765`) and open
-`http://localhost:8765/?fake` (or `?fake=50` to run the app's timers 50x faster). Connect
-as usual; the console has `fakeVolcano.state`, `fakeVolcano.log` (every write),
-`fakeVolcano.drop()` to drop the link and `fakeVolcano.failReconnects(n)`. It only loads on
-localhost with `?fake`, and `tools/` is never deployed.
+`demo-volcano.js` simulates a Volcano Hybrid over the same Bluetooth IDs. It's deployed for
+the public demo (`?demo` on any host: heats at about a real Volcano's pace, and keeps its
+data in the tab's own storage). For development, serve the repo locally (for example
+`python -m http.server 8765`) and open `http://localhost:8765/?fake`, or `?fake=50` to run
+the app's timers 50x faster; `?fake` uses the normal storage and only works on localhost.
+Connect as usual; the console has `fakeVolcano.state`, `fakeVolcano.log` (every write),
+`fakeVolcano.drop()` to drop the link and `fakeVolcano.failReconnects(n)`.
 
 ## Smoke test
 

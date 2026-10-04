@@ -1,12 +1,12 @@
-// tools/fake-volcano.js — a simulated Volcano Hybrid for development.
+// demo-volcano.js — a simulated Volcano Hybrid, for the demo and for testing.
 //
-// Loaded only on localhost with ?fake in the URL (see the loader near the top of
-// volcano-ble.js); tools/ is never deployed. It replaces
+// Loaded by volcano-ble.js only when the URL asks for it. It replaces
 // navigator.bluetooth.requestDevice with a device that answers on the real
 // GATT UUIDs, heats toward its target, runs the pump, keeps the status
 // registers and auto-off timer, and can drop its link on demand.
 //
-//   ?fake          real-time simulation
+//   ?demo          the public demo (any host): heats about as fast as a real one
+//   ?fake          localhost only, for development: 1 °C/s, the app's own storage
 //   ?fake=50       app timers run 50x faster (holds, fills, countdowns)
 //
 // From the browser console:
@@ -28,6 +28,7 @@
     serial: U("10100008"), fw: U("10100005"), fwBle: U("10100004"),
   };
 
+  var demo = /[?&]demo\b/.test(location.search);
   var speed = (function () {
     var m = /[?&]fake=(\d+)/.exec(location.search);
     return m ? Math.max(1, Number(m[1])) : 1;
@@ -51,10 +52,12 @@
   function str(s) { return new DataView(new TextEncoder().encode(s).buffer); }
   function lost() { var e = new Error("GATT Server is disconnected."); e.name = "NetworkError"; return e; }
 
-  // Physics: ~1 °C/s up while heating, slow drift down otherwise; auto-off counts down.
+  // Physics: up while heating (3 °C/s in the demo, about a real Volcano; 1 °C/s
+  // for testing), slow drift down otherwise; auto-off counts down.
+  var rate = demo ? 3 : 1;
   setInterval(function () {
     if (S.heat) {
-      var d = S.set - S.cur; S.cur += Math.sign(d) * Math.min(1, Math.abs(d));
+      var d = S.set - S.cur; S.cur += Math.sign(d) * Math.min(rate, Math.abs(d));
       if (S.autoOff > 0 && --S.autoOff === 0) { S.heat = false; S.fan = false; }
       S.heatSecs++;
     } else if (S.cur > 25) S.cur -= 0.2;
@@ -74,7 +77,7 @@
       case C.heatMin: return Promise.resolve(u16(Math.floor(S.heatSecs / 60) % 60));
       case C.prj1: return Promise.resolve(u32((S.heat ? 32 : 0) | (S.fan ? 8192 : 0)));
       case C.prj2: case C.prj3: return Promise.resolve(u32(0));
-      case C.serial: return Promise.resolve(str("FAKE0000001"));
+      case C.serial: return Promise.resolve(str(demo ? "DEMO0000001" : "FAKE0000001"));
       case C.fw: return Promise.resolve(str("V01.03.00.00"));
       case C.fwBle: return Promise.resolve(str("V01.00.00.00"));
       default: return Promise.resolve(u32(0));
@@ -121,7 +124,7 @@
     disconnect: function () { S.connected = false; },
   };
   var device = {
-    id: "fake-volcano", name: "S&B VOLCANO H (fake)",
+    id: "fake-volcano", name: demo ? "Demo Volcano" : "S&B VOLCANO H (fake)",
     gatt: {
       get connected() { return S.connected; },
       connect: function () {
@@ -149,6 +152,6 @@
     },
     failReconnects: function (n) { S.failNext = n; return "next " + n + " reconnects will fail"; },
   };
-  console.info("[fake-volcano] simulated Volcano active" + (speed > 1 ? ", timers x" + speed : "") +
+  if (!demo) console.info("[fake-volcano] simulated Volcano active" + (speed > 1 ? ", timers x" + speed : "") +
     ". Try fakeVolcano.drop() during a run.");
 })();

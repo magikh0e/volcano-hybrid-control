@@ -14,13 +14,23 @@
 (() => {
   "use strict";
 
-  // Development: on localhost, ?fake swaps in the simulated Volcano from
-  // tools/fake-volcano.js (tools/ is never deployed). ?fake=50 runs timers 50x.
-  if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && /[?&]fake\b/.test(location.search)) {
-    const fake = document.createElement("script");
-    fake.src = "tools/fake-volcano.js";
-    document.head.append(fake);
-  }
+  // ?demo (any host) runs the app against the simulated Volcano in
+  // demo-volcano.js, with its own storage for this tab so nothing mixes with real
+  // sessions. On localhost, ?fake does the same with the normal storage (testing),
+  // and ?fake=50 runs the app's timers 50x. The app starts once the simulator is in.
+  const DEMO = /[?&]demo\b/.test(location.search);
+  const FAKE = DEMO || (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && /[?&]fake\b/.test(location.search));
+  const fakeReady = !FAKE ? Promise.resolve() : new Promise((done) => {
+    const s = document.createElement("script");
+    s.src = "demo-volcano.js";
+    s.onload = s.onerror = done;
+    document.head.append(s);
+  });
+  const store = !DEMO ? localStorage : {
+    getItem: (k) => sessionStorage.getItem("volcano-demo:" + k),
+    setItem: (k, v) => sessionStorage.setItem("volcano-demo:" + k, v),
+    removeItem: (k) => sessionStorage.removeItem("volcano-demo:" + k),
+  };
 
   const SVC      = "10110000-5354-4f52-5a26-4249434b454c"; // main control service
   const SVC3     = "10100000-5354-4f52-5a26-4249434b454c"; // status / register service
@@ -89,6 +99,8 @@
 
   function setConnected(on) {
     document.body.classList.toggle("v-connected", on);
+    if (on && !graphTimer) graphTimer = setInterval(graphSample, GRAPH_EVERY_MS);
+    if (!on && graphTimer) { clearInterval(graphTimer); graphTimer = null; }
     const c = $("v-connect"), d = $("v-disconnect"), rc = $("v-reconnect");
     if (c) c.hidden = on;
     if (d) d.hidden = !on;
@@ -137,7 +149,7 @@
   // The device works in °C; the app can show °F. Only what's displayed is
   // converted: values are stored and written in °C.
   let appF = false;
-  try { appF = localStorage.getItem("volcano-app-units") === "F"; } catch (e) { /* ignore */ }
+  try { appF = store.getItem("volcano-app-units") === "F"; } catch (e) { /* ignore */ }
   const cToF = (c) => Math.round(c * 9 / 5 + 32);
   const fToC = (f) => Math.round((f - 32) * 5 / 9);
   function fmtT(c) { return appF ? cToF(c) + " °F" : c + " °C"; }
@@ -153,9 +165,48 @@
     if (c) c.textContent = curTemp == null ? "---" : fmtT(curTemp);
     devVisual();
   }
+  // ---- temperature graph (under Fill bag): chamber against target, fills shaded ----
+  const GRAPH_SECS = 600, GRAPH_EVERY_MS = 2000;
+  let tempLog = [], graphTimer = null;
+  function graphSample() {
+    if (!svc || curTemp == null) return;
+    const now = Date.now();
+    tempLog.push({ t: now, c: curTemp, s: target, f: !!fanOn });
+    while (tempLog.length && tempLog[0].t < now - GRAPH_SECS * 1000) tempLog.shift();
+    renderGraph();
+  }
+  function renderGraph() {
+    const box = $("v-graph"), svg = $("v-graph-svg");
+    if (!box || !svg) return;
+    box.hidden = tempLog.length < 2;
+    if (box.hidden) return;
+    const W = 300, H = 80, t0 = tempLog[0].t, last = tempLog[tempLog.length - 1];
+    const span = Math.max(last.t - t0, 60000);
+    let lo = Infinity, hi = -Infinity;
+    tempLog.forEach((p) => { lo = Math.min(lo, p.c, p.s); hi = Math.max(hi, p.c, p.s); });
+    lo = Math.floor((lo - 8) / 5) * 5; hi = Math.ceil((hi + 8) / 5) * 5;
+    const x = (t) => ((t - t0) / span * W).toFixed(1), y = (v) => (H - (v - lo) / (hi - lo) * H).toFixed(1);
+    const cur = tempLog.map((p) => x(p.t) + "," + y(p.c)).join(" ");
+    const tgt = tempLog.map((p, i) => (i ? x(p.t) + "," + y(tempLog[i - 1].s) + " " : "") + x(p.t) + "," + y(p.s)).join(" ");
+    let fills = "", from = null;
+    tempLog.forEach((p, i) => {
+      if (p.f && from == null) from = p.t;
+      if (from != null && (!p.f || i === tempLog.length - 1)) {
+        fills += '<rect class="vg-fill" x="' + x(from) + '" y="0" width="' + Math.max(1, x(p.t) - x(from)).toFixed(1) + '" height="' + H + '"/>';
+        from = null;
+      }
+    });
+    svg.innerHTML = fills + '<polyline class="vg-target" points="' + tgt + '"/><polyline class="vg-cur" points="' + cur + '"/>';
+    const mins = Math.max(1, Math.round((last.t - t0) / 60000));
+    svg.setAttribute("aria-label", "Temperature over the last " + plural(mins, "minute") + ": chamber " + fmtT(last.c) + ", target " + fmtT(last.s) + ".");
+    $("v-graph-hi").textContent = fmtDeg(hi);
+    $("v-graph-lo").textContent = fmtDeg(lo);
+    $("v-graph-cap").textContent = "Last " + plural(mins, "min").replace("mins", "min") + " · chamber " + fmtDeg(last.c) + " · target " + fmtDeg(last.s);
+  }
+
   function setAppUnits(f) {
     appF = !!f;
-    try { localStorage.setItem("volcano-app-units", appF ? "F" : "C"); } catch (e) { /* ignore */ }
+    try { store.setItem("volcano-app-units", appF ? "F" : "C"); } catch (e) { /* ignore */ }
     document.querySelectorAll("#v-appunits .v-segbtn").forEach((b) => {
       const active = (b.dataset.unit === "F") === appF;
       b.classList.toggle("active", active);
@@ -528,9 +579,26 @@
       .sort((a, b) => a - b);
   }
 
+  // Optional names for presets ("Terps"), by temperature in °C.
+  let presetLabels = {};
+  function cleanLabels(o) {
+    const out = {};
+    if (o && typeof o === "object") Object.keys(o).forEach((k) => {
+      const t = Math.round(Number(k)), v = String(o[k] == null ? "" : o[k]).trim().slice(0, 16);
+      if (v && Number.isFinite(t) && t >= MIN_T && t <= MAX_T) out[t] = v;
+    });
+    return out;
+  }
+  function loadLabels() {
+    try { return cleanLabels(JSON.parse(store.getItem("volcano-preset-labels") || "{}")); } catch (e) { return {}; }
+  }
+  function saveLabels() {
+    try { store.setItem("volcano-preset-labels", JSON.stringify(presetLabels)); } catch (e) { /* ignore */ }
+  }
+
   function loadPresets() {
     try {
-      const raw = localStorage.getItem("volcano-presets");
+      const raw = store.getItem("volcano-presets");
       if (raw) {
         const arr = JSON.parse(raw);
         if (Array.isArray(arr)) { const s = sanitizePresets(arr); if (s.length) return s; }
@@ -540,7 +608,7 @@
   }
 
   function savePresets() {
-    try { localStorage.setItem("volcano-presets", JSON.stringify(presets)); } catch (e) { /* ignore */ }
+    try { store.setItem("volcano-presets", JSON.stringify(presets)); } catch (e) { /* ignore */ }
   }
 
   function renderPresets() {
@@ -553,10 +621,11 @@
       b.type = "button";
       b.className = "v-preset" + (presetEditMode ? " v-preset-editing" : "");
       b.dataset.temp = String(t);
-      b.textContent = presetEditMode ? (fmtDeg(t) + " ×") : fmtDeg(t);
+      const name = presetLabels[t] ? presetLabels[t] + " " : "";
+      b.textContent = name + fmtDeg(t) + (presetEditMode ? " ×" : "");
       b.disabled = presetEditMode ? false : !connected;
       b.setAttribute("aria-label",
-        presetEditMode ? ("Remove " + fmtT(t) + " preset") : ("Set target " + fmtT(t)));
+        (presetEditMode ? "Remove " + fmtT(t) + " preset" : "Set target " + fmtT(t)) + (name ? " (" + presetLabels[t] + ")" : ""));
       box.appendChild(b);
     });
     if (presetEditMode && !presets.length) {
@@ -629,16 +698,26 @@
     if (!inp.value.trim() || !Number.isFinite(v) || v < MIN_T || v > MAX_T) {
       status("Preset must be " + fmtT(MIN_T) + "–" + fmtT(MAX_T) + ".", "warn"); return;
     }
-    if (presets.includes(v)) { status(fmtT(v) + " is already a preset.", "warn"); inp.value = ""; return; }
+    const labIn = $("v-preset-add-label"), lab = labIn ? labIn.value.trim().slice(0, 16) : "";
+    const clear = () => { inp.value = ""; if (labIn) labIn.value = ""; };
+    if (presets.includes(v)) {
+      if (lab && lab !== presetLabels[v]) {   // adding an existing temperature with a label names it
+        presetLabels[v] = lab; saveLabels(); renderPresets(); clear();
+        status('Named the ' + fmtT(v) + ' preset "' + lab + '".', "ok"); return;
+      }
+      status(fmtT(v) + " is already a preset. Add it with a label to name it.", "warn"); clear(); return;
+    }
     presets = sanitizePresets([...presets, v]);
-    savePresets();
+    if (lab) presetLabels[v] = lab; else delete presetLabels[v];
+    savePresets(); saveLabels();
     renderPresets();
-    inp.value = "";
-    status("Added " + fmtT(v) + " preset.", "ok");
+    clear();
+    status("Added " + fmtT(v) + " preset" + (lab ? ' "' + lab + '"' : "") + ".", "ok");
   }
 
   function resetPresets() {
     presets = DEFAULT_PRESETS.slice();
+    presetLabels = {}; saveLabels();
     savePresets();
     renderPresets();
     status("Presets reset to Vapesuvius defaults.", "ok");
@@ -649,6 +728,7 @@
       const next = !heatOn;
       if (next && !confirm("Turn the heater ON? It will ramp to " + fmtT(target) + ".")) return;
       await write(next ? HEAT_ON : HEAT_OFF, [next ? 1 : 0]);
+      heatOn = next; setLed("v-heatled", next);   // now, so a quick second press toggles back
       status("Heater " + (next ? "ON" : "OFF") + ".", "ok");
       setTimeout(pollStatus, 400);
     } catch (e) { status("Heat toggle failed: " + (e.message || e), "err"); }
@@ -658,6 +738,7 @@
     try {
       const next = !fanOn;
       await write(next ? FAN_ON : FAN_OFF, [next ? 1 : 0]);
+      fanOn = next; setLed("v-fanled", next);
       status("Fan " + (next ? "ON" : "OFF") + ".", "ok");
       setTimeout(pollStatus, 400);
     } catch (e) { status("Fan toggle failed: " + (e.message || e), "err"); }
@@ -787,7 +868,7 @@
 
   // ===== Workflows ===========================================================
   // A workflow is { id, name, actions: [ {type, ...params} ] }, saved in
-  // localStorage. Action types mirror Project Onyx:
+  // store. Action types mirror Project Onyx:
   //   heatOn {temp?}  heatOff  fanOn {secs}  fanOnGlobal {secs}  wait {secs}
   //   setLED {pct}  exitWhenTemp {temp, by?: "target"|"chamber"}  loop
   //   conditionalTemp { def:{temp,wait}, conditions:[{ifTemp,thenSet,wait}] }
@@ -1005,10 +1086,10 @@
   // Favourite templates (by name): starred in the list, first in the drawing's dropdown.
   let tplFavs = new Set();
   try {
-    const f = JSON.parse(localStorage.getItem("volcano-tpl-favs") || "[]");
+    const f = JSON.parse(store.getItem("volcano-tpl-favs") || "[]");
     if (Array.isArray(f)) tplFavs = new Set(f.filter((n) => WF_TEMPLATES.some((t) => t.name === n)));
   } catch (e) { /* ignore */ }
-  function tplFavSave() { try { localStorage.setItem("volcano-tpl-favs", JSON.stringify([...tplFavs])); } catch (e) { /* ignore */ } }
+  function tplFavSave() { try { store.setItem("volcano-tpl-favs", JSON.stringify([...tplFavs])); } catch (e) { /* ignore */ } }
   function tplFavToggle(name) {
     if (tplFavs.has(name)) tplFavs.delete(name); else tplFavs.add(name);
     tplFavSave(); renderWorkflows();
@@ -1020,7 +1101,7 @@
       "aria-label": "Favourite " + name, onClick: () => tplFavToggle(name) }, on ? "★" : "☆");
   }
   let wfTplFilter = "all";
-  try { const f = localStorage.getItem("volcano-tpl-filter"); if (WF_FILTERS.some((x) => x.k === f)) wfTplFilter = f; } catch (e) { /* ignore */ }
+  try { const f = store.getItem("volcano-tpl-filter"); if (WF_FILTERS.some((x) => x.k === f)) wfTplFilter = f; } catch (e) { /* ignore */ }
 
   // ---- ladder builder ---------------------------------------------------------
   // Your own start / end / step ladder, in either mode, turned into a workflow
@@ -1029,10 +1110,10 @@
   let ladderCfg = { start: 180, end: 220, step: 10, mode: "bag", fit: WF_BAG_FIT, fill: WF_BAG_FILL, hold: WF_WHIP_HOLD };
   let ladderOpen = false;
   try {
-    const raw = JSON.parse(localStorage.getItem("volcano-ladder-builder") || "null");
+    const raw = JSON.parse(store.getItem("volcano-ladder-builder") || "null");
     if (raw && typeof raw === "object") ladderCfg = Object.assign(ladderCfg, raw);
   } catch (e) { /* ignore */ }
-  function saveLadderCfg() { try { localStorage.setItem("volcano-ladder-builder", JSON.stringify(ladderCfg)); } catch (e) { /* ignore */ } }
+  function saveLadderCfg() { try { store.setItem("volcano-ladder-builder", JSON.stringify(ladderCfg)); } catch (e) { /* ignore */ } }
 
   // Rungs from start to end in `step` °C steps (either direction). The end is
   // always the last rung, even when the step doesn't land on it exactly.
@@ -1168,7 +1249,7 @@
     box.append(el("div", { class: "v-wf-chips v-wf-filters", role: "group", "aria-label": "Filter templates" },
       WF_FILTERS.map((f) => el("button", { class: "v-wf-chip" + (wfTplFilter === f.k ? " active" : ""), type: "button",
         "aria-pressed": wfTplFilter === f.k ? "true" : "false",
-        onClick: () => { wfTplFilter = f.k; try { localStorage.setItem("volcano-tpl-filter", f.k); } catch (e) { /* ignore */ } renderWorkflows(); } },
+        onClick: () => { wfTplFilter = f.k; try { store.setItem("volcano-tpl-filter", f.k); } catch (e) { /* ignore */ } renderWorkflows(); } },
         f.label + " (" + count(f.k) + ")"))));
     const connected = document.body.classList.contains("v-connected");
     if (wfTplFilter === "fav" && !tplFavs.size)
@@ -1207,13 +1288,13 @@
 
   function loadWorkflows() {
     try {
-      const raw = localStorage.getItem("volcano-workflows");
+      const raw = store.getItem("volcano-workflows");
       if (raw) { const a = JSON.parse(raw); if (Array.isArray(a)) return a; }
     } catch (e) { /* ignore */ }
     return [];
   }
   function saveWorkflows() {
-    try { localStorage.setItem("volcano-workflows", JSON.stringify(workflows)); } catch (e) { /* ignore */ }
+    try { store.setItem("volcano-workflows", JSON.stringify(workflows)); } catch (e) { /* ignore */ }
   }
   // Unique across reloads (a per-visit counter could repeat an id still saved from before).
   function wfNewId() {
@@ -1301,7 +1382,7 @@
 
   // Beep (and vibrate where supported) when it's time to fit a bag and when it's full.
   let wfCuesOn = true;
-  try { wfCuesOn = localStorage.getItem("volcano-cues") !== "0"; } catch (e) { /* ignore */ }
+  try { wfCuesOn = store.getItem("volcano-cues") !== "0"; } catch (e) { /* ignore */ }
   let wfAudio = null;
   function wfPrepareAudio() {   // called from the Run click, so the browser allows sound
     if (!wfCuesOn) return;
@@ -1314,7 +1395,7 @@
   // The same moments as system notifications, only while the app is in the
   // background (another app, another tab, screen off).
   let wfNotifyOn = false;
-  try { wfNotifyOn = localStorage.getItem("volcano-notify") === "1"; } catch (e) { /* ignore */ }
+  try { wfNotifyOn = store.getItem("volcano-notify") === "1"; } catch (e) { /* ignore */ }
   const NOTIFY_TAG = "volcano-session";
   const canNotify = () => "Notification" in window && Notification.permission === "granted";
   function wfNotify(title, body) {
@@ -1342,7 +1423,7 @@
       }
     }
     wfNotifyOn = box.checked;
-    try { localStorage.setItem("volcano-notify", wfNotifyOn ? "1" : "0"); } catch (err) { /* ignore */ }
+    try { store.setItem("volcano-notify", wfNotifyOn ? "1" : "0"); } catch (err) { /* ignore */ }
     if (wfNotifyOn) status("While the app is in the background, a notification says when to fit a bag, when it's full and when the session ends.", "ok");
   }
 
@@ -1602,6 +1683,19 @@
     clearTimeout(devCommitTimer);
     devCommitTimer = setTimeout(() => { if (svc) commitTarget(); }, 600);
   }
+  // Keyboard shortcuts on any tab, except while typing in a field:
+  // − / + target, H heater, A air, F fill bag. Holding − or + repeats.
+  const KEYS = { "-": () => devBump(-STEP), "_": () => devBump(-STEP), "+": () => devBump(STEP), "=": () => devBump(STEP),
+    h: () => toggleHeat(), a: () => toggleFan(), f: () => { const b = $("v-fill"); if (b && !b.disabled) b.click(); } };
+  document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+    const fn = KEYS[e.key.toLowerCase()];
+    if (!fn || (e.repeat && !"-_+=".includes(e.key))) return;
+    if (e.target.closest && e.target.closest("input, textarea, select, [contenteditable]")) return;
+    e.preventDefault();
+    if (!svc) { status("Connect first to use the keyboard shortcuts.", "warn"); return; }
+    fn();
+  });
   function devExactTarget() {
     const unit = appF ? "°F" : "°C";
     const raw = prompt("Target temperature (" + unit + "):", appF ? cToF(target) : target);
@@ -1628,10 +1722,10 @@
   // Profile picker under the drawing: saved workflows, then templates, narrowed
   // to Bags, Whip or All.
   let devPick = "";
-  try { devPick = localStorage.getItem("volcano-dev-pick") || ""; } catch (e) { /* ignore */ }
-  function saveDevPick() { try { localStorage.setItem("volcano-dev-pick", devPick); } catch (e) { /* ignore */ } }
+  try { devPick = store.getItem("volcano-dev-pick") || ""; } catch (e) { /* ignore */ }
+  function saveDevPick() { try { store.setItem("volcano-dev-pick", devPick); } catch (e) { /* ignore */ } }
   let devMode = "bag";
-  try { const m = localStorage.getItem("volcano-dev-mode"); if (m === "bag" || m === "whip" || m === "all") devMode = m; } catch (e) { /* ignore */ }
+  try { const m = store.getItem("volcano-dev-mode"); if (m === "bag" || m === "whip" || m === "all") devMode = m; } catch (e) { /* ignore */ }
   // What a saved workflow does: fills bags, holds temperatures (whip), or neither.
   function wfKindOf(actions) {
     const a = actions || [];
@@ -1682,7 +1776,7 @@
     });
     const modeBtn = (m, label) => el("button", { class: "v-wf-chip" + (devMode === m ? " active" : ""), type: "button",
       "aria-pressed": devMode === m ? "true" : "false",
-      onClick: () => { devMode = m; try { localStorage.setItem("volcano-dev-mode", m); } catch (e) { /* ignore */ } renderDevicePicker(); } }, label);
+      onClick: () => { devMode = m; try { store.setItem("volcano-dev-mode", m); } catch (e) { /* ignore */ } renderDevicePicker(); } }, label);
     box.append(el("div", { class: "v-wf-chips v-dev-modes", role: "group", "aria-label": "Show bag or whip sessions" },
       modeBtn("bag", "🛍 Bags"), modeBtn("whip", "💨 Whip"), modeBtn("all", "All")));
     const picked = profiles.find((p) => p.key === devPick);
@@ -1711,7 +1805,7 @@
       el("label", { class: "v-check v-wf-cues", title: "Beep (and vibrate on phones) when it's time to fit a bag, and when it's full" },
         el("input", { type: "checkbox", checked: wfCuesOn, onChange: (e) => {
           wfCuesOn = e.target.checked;
-          try { localStorage.setItem("volcano-cues", wfCuesOn ? "1" : "0"); } catch (err) { /* ignore */ }
+          try { store.setItem("volcano-cues", wfCuesOn ? "1" : "0"); } catch (err) { /* ignore */ }
           if (wfCuesOn) { wfPrepareAudio(); wfBeep(1, 120); }   // a sample beep
         } }), " 🔔 Sound & vibration cues"),
       "Notification" in window ? el("label", { class: "v-check v-wf-cues",
@@ -1850,9 +1944,9 @@
   // ---- session sessLog: what ran, when, how long, how many bags (this browser) ----
   const HIST_MAX = 200;
   let sessLog = [];
-  try { const h = JSON.parse(localStorage.getItem("volcano-history") || "[]"); if (Array.isArray(h)) sessLog = h; } catch (e) { /* ignore */ }
+  try { const h = JSON.parse(store.getItem("volcano-history") || "[]"); if (Array.isArray(h)) sessLog = h; } catch (e) { /* ignore */ }
   let histOpen = false;
-  function histSave() { try { localStorage.setItem("volcano-history", JSON.stringify(sessLog)); } catch (e) { /* ignore */ } }
+  function histSave() { try { store.setItem("volcano-history", JSON.stringify(sessLog)); } catch (e) { /* ignore */ } }
   function histAdd(entry) { sessLog.unshift(entry); sessLog.length = Math.min(sessLog.length, HIST_MAX); histSave(); }
   function histKey(h) { return (h.started || "") + "\u0000" + (h.name || ""); }
   // What a history row ran, ready to run again: the saved workflow, the template
@@ -1870,12 +1964,30 @@
     for (const t of WF_TEMPLATES) for (const m of tplModes(t)) if (tplName(t, m) === h.name) return () => wfRunTemplate(t, m);
     return null;
   }
+  function histRating(r) { r = Math.round(Number(r)); return Number.isFinite(r) ? Math.min(5, Math.max(0, r)) : 0; }
   function histSrc(s) {   // a backup's src field, checked
     if (!s || typeof s !== "object") return undefined;
     if (typeof s.tpl === "string") return { tpl: s.tpl, mode: s.mode === "bag" || s.mode === "whip" ? s.mode : null };
     if (Array.isArray(s.actions)) return { actions: sanitizeActions(s.actions) };
     if (typeof s.wf === "string") return { wf: s.wf };
     return undefined;
+  }
+  let histNoteOpen = null;   // histKey of the row whose note is being edited
+  function histNoteEditor(h) {
+    const reopen = (sel) => { renderWorkflows(); const n = document.querySelector(sel); if (n) n.focus(); };
+    const stars = el("span", { class: "v-hist-stars", role: "group", "aria-label": "Rating" },
+      [1, 2, 3, 4, 5].map((n) => el("button", { class: "v-mini v-hist-star" + ((h.rating || 0) >= n ? " active" : ""), type: "button",
+        "aria-pressed": (h.rating || 0) >= n ? "true" : "false", "aria-label": n + (n === 1 ? " star" : " stars"),
+        onClick: () => { h.rating = h.rating === n ? 0 : n; histSave(); reopen(".v-hist-star:nth-child(" + n + ")"); } }, (h.rating || 0) >= n ? "★" : "☆")));
+    const done = () => { histNoteOpen = null; renderWorkflows(); };
+    return el("div", { class: "v-hist-noteedit" }, stars,
+      el("input", { class: "v-hist-notein", type: "text", maxlength: "200", value: h.note || "", placeholder: "Strain, how it hit…",
+        "aria-label": "Note", onInput: (e) => { h.note = e.target.value.slice(0, 200); histSave(); },
+        onKeydown: (e) => { if (e.key === "Enter") done(); } }),
+      el("button", { class: "v-btn", type: "button", onClick: done }, "Done"));
+  }
+  function histNoteText(h) {
+    return (h.rating ? "★".repeat(h.rating) + "☆".repeat(5 - h.rating) + " " : "") + (h.note || "");
   }
   function renderHistory() {
     const box = el("details", { class: "v-wf-history" },
@@ -1892,14 +2004,20 @@
     const list = el("ol", { class: "v-hist" });
     const connected = document.body.classList.contains("v-connected");
     sessLog.slice(0, 30).forEach((h) => {
-      const again = histRunner(h);
+      const again = histRunner(h), key = histKey(h), editing = histNoteOpen === key, noted = !!(h.note || h.rating);
       list.append(el("li", { class: "v-hist-row" + (h.outcome === "complete" ? "" : " v-hist-" + (h.outcome === "error" ? "err" : "stop")) },
         el("span", { class: "v-hist-when" }, fmtWhen(h.started)),
         el("span", { class: "v-hist-name" }, h.name || "workflow"),
         el("span", { class: "v-hist-meta" }, fmtDur(h.secs || 0) + (h.bags ? " · " + plural(h.bags, "bag") : "") + " · " + (h.outcome || "")),
-        again ? el("button", { class: "v-mini v-hist-again", type: "button", disabled: wfRunning || !connected,
-          title: connected ? "Run again" : "Connect to run again", "aria-label": "Run " + (h.name || "workflow") + " again", onClick: again }, "↻")
-          : el("span", { class: "v-hist-gone", title: "No longer saved" }, "")));
+        el("span", { class: "v-hist-btns" },
+          el("button", { class: "v-mini v-hist-notebtn" + (editing ? " active" : ""), type: "button", "aria-expanded": editing ? "true" : "false",
+            title: noted ? "Edit note" : "Add a note", "aria-label": (noted ? "Edit the note on " : "Add a note to ") + (h.name || "workflow"),
+            onClick: () => { histNoteOpen = editing ? null : key; renderWorkflows(); if (!editing) { const n = document.querySelector(".v-hist-notein"); if (n) n.focus(); } } }, "✎"),
+          again ? el("button", { class: "v-mini v-hist-again", type: "button", disabled: wfRunning || !connected,
+            title: connected ? "Run again" : "Connect to run again", "aria-label": "Run " + (h.name || "workflow") + " again", onClick: again }, "↻")
+            : el("span", { class: "v-hist-gone", title: "No longer saved" }, "")),
+        noted && !editing ? el("span", { class: "v-hist-note" }, histNoteText(h)) : null,
+        editing ? histNoteEditor(h) : null));
     });
     box.append(list);
     if (sessLog.length > 30) box.append(el("p", { class: "v-hint" }, "Showing the latest 30 of " + sessLog.length + "."));
@@ -1918,7 +2036,7 @@
   const BACKUP_APP = "volcano-hybrid-control";
   function wfBackup() {
     const data = { app: BACKUP_APP, version: APP_VERSION, exported: new Date().toISOString(),
-      workflows: workflows.map((w) => ({ name: w.name, actions: w.actions })), presets: presets.slice(), history: sessLog.slice(), favourites: [...tplFavs] };
+      workflows: workflows.map((w) => ({ name: w.name, actions: w.actions })), presets: presets.slice(), presetLabels: Object.assign({}, presetLabels), history: sessLog.slice(), favourites: [...tplFavs] };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -1947,23 +2065,34 @@
     const newHist = (data && Array.isArray(data.history) ? data.history : [])
       .filter((h) => h && typeof h.started === "string" && !haveHist.has(histKey(h)))
       .map((h) => ({ name: String(h.name || "workflow"), started: h.started, secs: Math.max(0, Number(h.secs) || 0),
-        bags: Math.max(0, Number(h.bags) || 0), outcome: String(h.outcome || ""), src: histSrc(h.src) }));
+        bags: Math.max(0, Number(h.bags) || 0), outcome: String(h.outcome || ""), src: histSrc(h.src),
+        note: typeof h.note === "string" ? h.note.slice(0, 200) : undefined, rating: histRating(h.rating) || undefined }));
+    const mine = new Map(sessLog.map((h) => [histKey(h), h]));
+    const noteFill = (data && Array.isArray(data.history) ? data.history : [])
+      .filter((h) => h && mine.has(histKey(h)) && (h.note || histRating(h.rating)) && !mine.get(histKey(h)).note && !mine.get(histKey(h)).rating)
+      .map((h) => ({ to: mine.get(histKey(h)), note: typeof h.note === "string" ? h.note.slice(0, 200) : "", rating: histRating(h.rating) }));
     const newFavs = (data && Array.isArray(data.favourites) ? data.favourites : [])
       .filter((n) => typeof n === "string" && !tplFavs.has(n) && WF_TEMPLATES.some((t) => t.name === n));
     let newPresets = data && Array.isArray(data.presets) ? sanitizePresets(data.presets) : null;
     if (newPresets && JSON.stringify(newPresets) === JSON.stringify(presets)) newPresets = null;   // already the same
+    let newLabels = data && data.presetLabels ? cleanLabels(data.presetLabels) : null;
+    if (newLabels && (!Object.keys(newLabels).length || JSON.stringify(newLabels) === JSON.stringify(presetLabels))) newLabels = null;
     const msg = "Restore from " + file.name + "?\n\n" +
       "• Add " + plural(fresh.length, "workflow") + (incoming.length > fresh.length ? " (" + (incoming.length - fresh.length) + " already here, skipped)" : "") + "\n" +
       (newPresets && newPresets.length ? "• Replace your presets with the backup's " + newPresets.length + "\n" : "") +
       (newHist.length ? "• Add " + plural(newHist.length, "history entry").replace("entrys", "entries") + "\n" : "") +
       (newFavs.length ? "• Add " + plural(newFavs.length, "favourite template") + "\n" : "") +
+      (newLabels ? "• Use the backup's preset labels\n" : "") +
+      (noteFill.length ? "• Add notes to " + plural(noteFill.length, "history entry").replace("entrys", "entries") + "\n" : "") +
       "\nNothing else is removed.";
-    if (!fresh.length && !(newPresets && newPresets.length) && !newHist.length && !newFavs.length) { status("Nothing new in that backup.", "ok"); return; }
+    if (!fresh.length && !(newPresets && newPresets.length) && !newHist.length && !newFavs.length && !newLabels && !noteFill.length) { status("Nothing new in that backup.", "ok"); return; }
     if (!confirm(msg)) return;
     fresh.forEach((w) => workflows.push({ id: wfNewId(), name: w.name, actions: w.actions }));
     saveWorkflows();
     if (newPresets && newPresets.length) { presets = newPresets; savePresets(); renderPresets(); }
     if (newFavs.length) { newFavs.forEach((n) => tplFavs.add(n)); tplFavSave(); }
+    if (newLabels) { presetLabels = newLabels; saveLabels(); renderPresets(); }
+    if (noteFill.length) { noteFill.forEach((f) => { if (f.note) f.to.note = f.note; if (f.rating) f.to.rating = f.rating; }); histSave(); }
     if (newHist.length) {
       sessLog = sessLog.concat(newHist).sort((a, b) => (b.started > a.started ? 1 : -1)).slice(0, HIST_MAX);
       histSave();
@@ -2115,6 +2244,7 @@
     }
     showTarget();
     presets = loadPresets();
+    presetLabels = loadLabels();
     workflows = loadWorkflows();
     // Older saves could hold the same id twice (or none): give those a fresh one.
     const seen = new Set();
@@ -2151,9 +2281,9 @@
     bind("v-preset-add", "click", addPreset);
     bind("v-preset-reset", "click", resetPresets);
     const presetAddIn = $("v-preset-add-in");
-    if (presetAddIn) presetAddIn.addEventListener("keydown", (e) => {
+    [presetAddIn, $("v-preset-add-label")].forEach((n) => { if (n) n.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); addPreset(); }
-    });
+    }); });
     const appUnits = $("v-appunits");
     if (appUnits) appUnits.addEventListener("click", (e) => {
       const b = e.target.closest("button[data-unit]");
@@ -2168,20 +2298,27 @@
     try {
       const ah = $("v-autoheat");
       if (ah) {
-        ah.checked = localStorage.getItem("volcano-autoheat") === "1";
+        ah.checked = store.getItem("volcano-autoheat") === "1";
         ah.addEventListener("change", () => {
-          try { localStorage.setItem("volcano-autoheat", ah.checked ? "1" : "0"); } catch (e) {}
+          try { store.setItem("volcano-autoheat", ah.checked ? "1" : "0"); } catch (e) {}
         });
       }
       const lf = $("v-ladder-fill");
       if (lf) {
-        lf.checked = localStorage.getItem("volcano-ladder-fill") === "1";
+        lf.checked = store.getItem("volcano-ladder-fill") === "1";
         lf.addEventListener("change", () => {
-          try { localStorage.setItem("volcano-ladder-fill", lf.checked ? "1" : "0"); } catch (e) {}
+          try { store.setItem("volcano-ladder-fill", lf.checked ? "1" : "0"); } catch (e) {}
         });
       }
     } catch (e) { /* localStorage may be unavailable */ }
-    status("Ready. Click Connect and pick your Volcano.");
+    if (DEMO) {
+      document.body.classList.add("v-demo");
+      const p = $("v-panel");
+      if (p) p.prepend(el("p", { class: "v-demo-bar", role: "note" },
+        el("strong", null, "Demo:"), " a simulated Volcano. Nothing here talks to a real device, and what you save stays in this tab. ",
+        el("a", { href: location.pathname }, "Exit demo")));
+      status("Demo: click Connect to start the simulated Volcano.");
+    } else status("Ready. Click Connect and pick your Volcano.");
     setTimeout(importSharedWorkflow, 0);   // offer to import a #wf=… share link, if present
   }
 
@@ -2213,6 +2350,7 @@
     };
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
-  else init();
+  const start = () => fakeReady.then(init);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  else start();
 })();
