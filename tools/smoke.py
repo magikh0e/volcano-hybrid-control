@@ -51,7 +51,7 @@ from urllib.request import urlopen
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SPEED = 40          # ?fake=N: app timers run N times faster
 INIT = "window.confirm = () => true; window.alert = () => {};"
-# For pages loaded without the simulator (the update test) on browsers with no
+# For pages loaded without the simulator (no ?fake or ?demo) on browsers with no
 # Web Bluetooth at all, such as Chrome on Linux in CI: without it the app shows
 # its "unsupported" note instead of the panel.
 NO_BT = """
@@ -238,7 +238,7 @@ class Smoke:
         # Duplicate saved ids (from older versions) are repaired on load
         ctx = context("""localStorage.setItem("volcano-workflows", JSON.stringify([
           { id: "wf2_1", name: "A", actions: [{ type: "heatOff" }] },
-          { id: "wf2_1", name: "B", actions: [{ type: "heatOff" }] }]));""")
+          { id: "wf2_1", name: "B", actions: [{ type: "heatOff" }] }]));""" + NO_BT)   # no simulator on this page
         page = ctx.new_page(); self.watch(page)
         page.goto(self.base + "/")
         ids = page.evaluate("JSON.parse(localStorage.getItem('volcano-workflows')).map((w) => w.id)")
