@@ -9,6 +9,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-10-04
+
 ### Changed
 
 - New link-preview image (what chats and social sites show for a shared link): the app mid-fill
@@ -288,7 +290,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.3.1...HEAD
+[2.3.1]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.2.2...v2.3.0
 [2.2.2]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.2.0...v2.2.1
