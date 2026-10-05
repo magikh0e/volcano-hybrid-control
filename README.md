@@ -2,7 +2,7 @@
 
 [![Smoke test](https://github.com/magikh0e/volcano-hybrid-control/actions/workflows/smoke.yml/badge.svg)](https://github.com/magikh0e/volcano-hybrid-control/actions/workflows/smoke.yml)
 
-[![Volcano Hybrid Web App — Bluetooth control in your browser](og.jpg)](https://volcano.magikh0e.pl/)
+[![Volcano Hybrid Web App: control your Volcano from the browser, with the on-screen Volcano filling a bag](og.jpg)](https://volcano.magikh0e.pl/)
 
 Control a **Storz &amp; Bickel Volcano Hybrid** straight from your browser over
 **Web Bluetooth** — no app, no backend, no Home Assistant. The browser is the BLE
@@ -14,6 +14,8 @@ framework, no dependencies; installable as a PWA and works offline.
 **Live:** [**volcano.magikh0e.pl**](https://volcano.magikh0e.pl/) — the standalone,
 installable app. No Volcano to hand? [**Try the demo**](https://volcano.magikh0e.pl/?demo), which
 runs against a simulated one in any browser.
+
+<p align="center"><img src=".github/media/session.gif" alt="A hands-free bag session: the on-screen Volcano heats to 180 °C, counts down to fit a fresh bag, then fills it" width="320"></p>
 
 A session in progress on a laptop: the drawing filling a bag, the temperature graph of the
 climb under it, and the template library on the right:

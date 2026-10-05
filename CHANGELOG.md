@@ -9,6 +9,11 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+### Changed
+
+- New link-preview image (what chats and social sites show for a shared link): the app mid-fill
+  with its temperature graph, beside the title and the demo link.
+
 ## [2.3.0] - 2026-10-04
 
 ### Added
