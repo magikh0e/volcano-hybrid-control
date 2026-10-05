@@ -158,6 +158,13 @@ Free and open-source, built and maintained in my own time. If it has been handy 
 
 See [CHANGELOG.md](CHANGELOG.md) for what changed in each version. The version is shown in the app's footer.
 
+## Contributing
+
+Bug reports, ideas and new session templates are welcome through the
+[issue forms](https://github.com/magikh0e/volcano-hybrid-control/issues/new/choose), or the app's
+**Report a problem** link. For code, see [CONTRIBUTING.md](CONTRIBUTING.md): no build step, a
+simulated Volcano to develop against, and a smoke test that runs on every pull request.
+
 ## License
 
 [GPL-3.0-or-later](LICENSE) © 2026 magikh0e.

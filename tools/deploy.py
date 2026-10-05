@@ -79,6 +79,7 @@ EXCLUDES = [
     ".env.example",
     ".gitignore",
     "README.md",
+    "CONTRIBUTING.md",
     "__pycache__/",
     "*.pyc",
     ".DS_Store",

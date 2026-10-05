@@ -26,6 +26,8 @@ Checks:
   - deleting a workflow, an action or a preset happens at once and Undo
     (or Ctrl+Z) puts it back
   - ▲ / ▼ reorder saved workflows, keeping focus on the moved card
+  - Report a problem links fill in the bug form (version, browser, firmware;
+    "demo" in the demo)
   - "What's new" lists the changelog since the version last seen, closes for
     good with Got it, and stays away on a first visit
   - the demo (?demo) connects itself to "Demo Volcano", heats at 5x, runs a
@@ -204,6 +206,11 @@ class Smoke:
         page = ctx.new_page(); self.watch(page)
         self.connect(page)
         self.check(page.title().startswith("Volcano"), "app loads and connects to the fake Volcano")
+        page.wait_for_function("() => document.querySelector('[data-report-link]').href.includes('firmware=')", timeout=10000)
+        report = page.evaluate("() => Object.fromEntries(new URL(document.querySelector('[data-report-link]').href).searchParams)")
+        self.check(report.get("template") == "bug_report.yml" and report.get("version") == "v" + page.evaluate("VOLCANO_APP_VERSION")
+                   and report.get("device", "").startswith("Chrome") and report.get("firmware") == "V01.03.00.00",
+                   f"Report a problem fills in the bug form: {report}")
         page.evaluate("fakeVolcano.state.cur = 183")
         self.run_template(page, "Quick Bag 185")
         page.wait_for_function("() => document.title.endsWith('· Volcano')", timeout=15000)
@@ -428,6 +435,8 @@ class Smoke:
         page.wait_for_function("() => !document.body.classList.contains('v-running')", timeout=10000)
         page.click(".v-tab[data-tab='workflows']")
         page.click("button:has-text('+ New workflow')")
+        report = page.evaluate("() => Object.fromEntries(new URL(document.querySelector('[data-report-link]').href).searchParams)")
+        self.check(report.get("device", "").endswith("· demo") and "firmware" not in report, f"demo reports say demo: {report.get('device')}")
         kept = page.evaluate("""() => ({ real: localStorage.getItem("volcano-workflows"),
           demo: sessionStorage.getItem("volcano-demo:volcano-workflows") })""")
         self.check(page.text_content("#v-dev-state") == "Demo Volcano" and kept["real"] is None and bool(kept["demo"]),

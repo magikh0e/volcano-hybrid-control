@@ -256,6 +256,8 @@
     const serial = svc3 ? await rd(svc3, SERIAL, decodeStr) : "—";
     const fw     = svc3 ? await rd(svc3, FW_VER, decodeStr) : "—";
     const bleFw  = svc3 ? await rd(svc3, FW_BLE, decodeStr) : "—";
+    if (typeof volcanoReportLinks === "function")   // bug reports carry the firmware (not the demo's made-up one)
+      volcanoReportLinks(DEMO ? { device: volcanoDeviceSummary() + " · demo" } : { firmware: fw !== "—" ? fw : "" });
     const hrs    = await rd(svc, HEAT_HRS, leUint);
     const mins   = await rd(svc, HEAT_MIN, leUint);
     const pad = (s) => (s + "                      ").slice(0, 22);
@@ -2430,6 +2432,7 @@
     } catch (e) { /* localStorage may be unavailable */ }
     if (DEMO) {
       document.body.classList.add("v-demo");
+      if (typeof volcanoReportLinks === "function") volcanoReportLinks({ device: volcanoDeviceSummary() + " · demo" });
       const p = $("v-panel");
       // 1x / 5x / 20x: heating, holds and fills, so a whole session can be watched in minutes.
       let demoSpeed = Number(store.getItem("volcano-demo-speed")) || 5;
