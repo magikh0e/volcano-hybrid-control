@@ -1,0 +1,48 @@
+name: Session template idea
+description: A ready-made session (ladder, bag routine or whip hold) to add to Templates.
+title: "[Template] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Templates run hands-free: heat to a temperature, wait for you to fit a bag, fill it, move on. A rough outline is plenty.
+  - type: input
+    id: name
+    attributes:
+      label: Name
+      placeholder: "Evening Ladder"
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Bags, whip, or both?
+      options:
+        - Bags
+        - Whip
+        - Both versions
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: The steps
+      description: Temperatures, how long to hold or fill, and what happens at the end.
+      placeholder: |
+        180 °C: fit a bag, fill 30 s
+        195 °C: fit a bag, fill 30 s
+        210 °C: fit a bag, fill 30 s
+        Heat off
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: What's it for?
+      description: The kind of session or material it suits, and why these temperatures.
+  - type: input
+    id: source
+    attributes:
+      label: Where it comes from (optional)
+      description: A forum post, a Home Assistant script, Project Onyx, your own routine…

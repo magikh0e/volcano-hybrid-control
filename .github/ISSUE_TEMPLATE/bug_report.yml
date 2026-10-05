@@ -1,0 +1,104 @@
+name: Bug report
+description: Something in the app doesn't work, or works differently from what Help says.
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. A quick look at [Help & FAQ](https://volcano.magikh0e.pl/help.html) first may already have the answer, especially for connection problems.
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Shown next to the title at the top of the app, and in the footer.
+      placeholder: v2.3.1
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Real Volcano or demo?
+      options:
+        - A real Volcano Hybrid
+        - The demo (no Volcano)
+        - Both
+    validations:
+      required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options:
+        - Chrome (desktop)
+        - Edge
+        - Opera
+        - Chrome (Android)
+        - Bluefy (iPhone / iPad)
+        - Other (say which below)
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and system
+      placeholder: Windows 11 laptop, Pixel 8 with Android 15, …
+    validations:
+      required: true
+  - type: dropdown
+    id: installed
+    attributes:
+      label: Installed as an app?
+      description: Opened from a home-screen or desktop icon rather than a browser tab.
+      options:
+        - "No, in a browser tab"
+        - "Yes, installed"
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      multiple: true
+      options:
+        - Connecting / Bluetooth
+        - Temperature, heat or fan
+        - Workflows and templates
+        - Session history and notes
+        - Temperature graph
+        - Notifications or sounds
+        - Demo
+        - Console
+        - Settings
+        - Look, themes or layout
+        - Installing or updating
+        - Something else
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Screenshots or a screen recording help a lot; paste or drag them in here.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to make it happen
+      placeholder: |
+        1. Connect
+        2. Run "Sampler (3 bags)"
+        3. At the second bag, …
+  - type: input
+    id: firmware
+    attributes:
+      label: Volcano firmware (real Volcano only)
+      description: Settings → Device shows it once connected.
+      placeholder: V01.03.00.00
+  - type: textarea
+    id: console
+    attributes:
+      label: Browser console errors (optional)
+      description: On a computer, press F12, open the Console tab, and paste anything in red.
+      render: text
