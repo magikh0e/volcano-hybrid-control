@@ -9,6 +9,14 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [2.4.2] - 2026-10-05
+
+### Changed
+
+- The developer-console greeting is now the app's own: "volcano — heat the planet", a pointer to
+  `fakeVolcano` in the demo and the source on GitHub, a paste warning that mentions the heater,
+  and where to report a bug.
+
 ## [2.4.1] - 2026-10-05
 
 ### Added
@@ -304,7 +312,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.1...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.2...HEAD
+[2.4.2]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.1...v2.4.2
 [2.4.1]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.3.1...v2.4.0
 [2.3.1]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.3.0...v2.3.1
