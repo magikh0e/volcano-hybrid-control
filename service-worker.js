@@ -6,7 +6,7 @@
 // device in range; only the UI is cached, not the BLE session). Bump CACHE on
 // any asset change so the offline copy is refreshed too.
 
-const CACHE = "volcano-hybrid-control-v68";
+const CACHE = "volcano-hybrid-control-v69";
 const NET_WAIT_MS = 4000;
 const ASSETS = [
   "./",
@@ -21,6 +21,7 @@ const ASSETS = [
   "./tabs.js",
   "./console.js",
   "./demo-volcano.js",
+  "./greeting.js",
   "./logo.webp",
   "./assets/favicon-32.png",
   "./manifest.webmanifest",

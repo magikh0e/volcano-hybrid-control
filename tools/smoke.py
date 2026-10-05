@@ -154,6 +154,7 @@ class Smoke:
         self.base = base
         self.failures = []
         self.errors = []
+        self.greeted = set()   # pages whose console showed the magikh0e.pl banner
 
     def check(self, ok, what):
         print(("  ok    " if ok else "  FAIL  ") + what)
@@ -163,6 +164,7 @@ class Smoke:
     def watch(self, page):
         page.on("pageerror", lambda e: self.errors.append(f"{page.url}: {e}"))
         page.on("console", lambda m: m.type == "error" and self.errors.append(f"{page.url}: {m.text}"))
+        page.on("console", lambda m: "h a c k   t h e   p l a n e t" in m.text and self.greeted.add(page.url.split("?")[0].rsplit("/", 1)[-1] or "app"))
 
     def precache(self):
         sw = open(os.path.join(ROOT, "service-worker.js"), encoding="utf-8").read()
@@ -444,6 +446,7 @@ class Smoke:
                    "demo connects to Demo Volcano and saves only to its own storage")
         ctx.close()
 
+        self.check({"app", "help.html", "404.html"} <= self.greeted, f"console greeting on the app, Help and 404 pages ({', '.join(sorted(self.greeted))})")
         self.contrast(browser)
         self.update(browser)
         self.check(not self.errors, "no script errors" + ("".join("\n          " + e for e in self.errors[:8]) if self.errors else ""))

@@ -15,7 +15,7 @@ the repo is what's served.
 |---|---|
 | `index.html`, `volcano.css` | The app's page and styles, including the six themes |
 | `volcano-ble.js` | Bluetooth, the drawing, workflows and templates, history, backups |
-| `console.js`, `tabs.js`, `theme.js`, `pwa.js`, `version.js` | Console tab, tabs, themes, install and updates, version |
+| `console.js`, `tabs.js`, `theme.js`, `pwa.js`, `version.js`, `greeting.js` | Console tab, tabs, themes, install and updates, version, the DevTools greeting |
 | `help.html`, `help.js` | The Help page |
 | `demo-volcano.js` | The simulated Volcano behind the demo and the tests |
 | `service-worker.js` | Offline copy of the app |

@@ -9,6 +9,13 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-10-05
+
+### Added
+
+- Opening the browser's developer console shows the magikh0e.pl greeting: the green banner, a
+  warning about pasting code there (self-XSS), and where to say hi.
+
 ## [2.4.0] - 2026-10-05
 
 ### Added
@@ -297,7 +304,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.1...HEAD
+[2.4.1]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.3.1...v2.4.0
 [2.3.1]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.2.2...v2.3.0
