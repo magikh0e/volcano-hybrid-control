@@ -402,7 +402,8 @@ class Smoke:
           return { title: c.querySelector('h2').textContent, versions: [...c.querySelectorAll('h3')].map((h) => h.textContent),
                    items: c.querySelectorAll('li').length, foot: c.querySelector('.v-whatsnew-foot a').textContent }; }""")
         current = page.evaluate("VOLCANO_APP_VERSION")
-        self.check(card["title"] == "What's new since v2.0.0" and card["versions"][:1] == ["v" + current] and card["items"] > 3,
+        self.check(card["title"] == "What's new since v2.0.0" and card["versions"][:1] == ["v" + current]
+                   and card["items"] >= len(card["versions"]) == 3,   # newest three releases, each with its changes
                    f"What's new after an update: {card['title']}, {', '.join(card['versions'])}, {card['items']} items; {card['foot']}")
         page.click(".v-whatsnew-foot .v-btn")
         page.reload()
