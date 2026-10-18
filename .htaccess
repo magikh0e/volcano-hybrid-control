@@ -1,0 +1,39 @@
+# volcano.magikh0e.com on Hostinger. LiteSpeed applies these like Apache would;
+# they match what the old server's vhost sent (deploy/volcano.magikh0e.pl.conf).
+# tools/deploy.py uploads this file with the site.
+
+Options -Indexes
+DirectoryIndex index.html
+ErrorDocument 404 /404.html
+
+AddType application/manifest+json .webmanifest
+AddType text/markdown .md
+AddDefaultCharset utf-8
+AddCharset utf-8 .js .css .md .webmanifest
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Everything over HTTPS
+  RewriteCond %{HTTPS} !=on
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L,NE]
+  # Never serve dotfiles (this one, .git, ...); certificate checks under .well-known still work
+  RewriteRule (^|/)\.(?!well-known/) - [F,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  # Security headers. A fully self-contained app: no third-party anything, no
+  # inline script or style. (Web Bluetooth isn't governed by CSP.)
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin"
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; object-src 'none'"
+
+  # The service worker, pages and changelog always revalidate, so a release shows up at once
+  <FilesMatch "service-worker\.js$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+  <FilesMatch "\.(html|webmanifest|md)$">
+    Header set Cache-Control "no-cache, max-age=300"
+  </FilesMatch>
+</IfModule>

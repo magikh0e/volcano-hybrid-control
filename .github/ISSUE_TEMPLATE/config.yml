@@ -1,10 +1,10 @@
 blank_issues_enabled: true
 contact_links:
   - name: Help & FAQ
-    url: https://volcano.magikh0e.pl/help.html
+    url: https://volcano.magikh0e.com/help.html
     about: Requirements, connection problems, and how each feature works.
   - name: Try the demo
-    url: https://volcano.magikh0e.pl/?demo
+    url: https://volcano.magikh0e.com/?demo
     about: The app against a simulated Volcano, in any browser.
   - name: Home Assistant integration
     url: https://github.com/SavageNL/home-assistant-volcano-hybrid

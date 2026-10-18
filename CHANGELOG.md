@@ -9,6 +9,16 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-10-18
+
+### Changed
+
+- The app has moved to **volcano.magikh0e.com**. The old address shows a short "We've moved"
+  page that brings each browser's saved workflows, history, notes, presets and settings along
+  (the new address asks first), retires its offline copy, and sends everything else to the same
+  page at the new address. An app installed from the old address needs installing again from the
+  new one.
+
 ## [2.4.2] - 2026-10-05
 
 ### Changed
@@ -312,7 +322,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.2...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.2...v3.0.0
 [2.4.2]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.1...v2.4.2
 [2.4.1]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.3.1...v2.4.0

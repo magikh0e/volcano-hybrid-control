@@ -1,28 +1,49 @@
-# Deploying volcano.magikh0e.pl
+# Deploying volcano.magikh0e.com
 
-Server-side setup for the standalone app. This folder is kept in git for
-reference and is **never uploaded** to the docroot (`tools/deploy.py`
-excludes it).
+Server-side setup for the app. This folder is kept in git for reference and is
+**never uploaded** (`tools/deploy.py` excludes it).
+
+## Where it runs
+
+- **volcano.magikh0e.com**: Hostinger shared hosting (LiteSpeed), in
+  `~/domains/volcano.magikh0e.com/public_html/` of the Hostinger account, which also
+  hosts other sites. HTTPS is Hostinger's certificate; the DNS record in Cloudflare's
+  magikh0e.com zone is DNS-only (not proxied). The repo's `.htaccess` carries the
+  security headers, CSP, cache rules and 404 page, and is deployed with the site.
+- **volcano.magikh0e.pl**: the old address, on the magikh0e.pl server behind
+  Cloudflare. It serves a "We've moved" page from `/var/www/volcano-moved/`
+  (`pl-moved/` here) that carries each browser's saved data to the new address in
+  the link's #fragment, plus a service worker that retires the old offline copy.
+  Every other URL redirects permanently (301) to the same path on the new address.
+  The previous app files are kept in `/var/www/volcano/` for a rollback.
 
 ## What's here
 
-- `volcano.magikh0e.pl.conf` — the Apache vhost, as live on the server at
-  `/etc/apache2/sites-available/volcano.magikh0e.pl.conf` (enabled via a
-  symlink in `sites-enabled/`). If you edit the live file, copy it back here.
+- `volcano.magikh0e.pl.conf`: the old address's Apache vhost, as live at
+  `/etc/apache2/sites-available/volcano.magikh0e.pl.conf`. If you edit the live file,
+  copy it back here.
+- `pl-moved/`: the old address's "We've moved" page, its script and style, the
+  retiring service worker, and the logo and favicon it shows.
 
-## The vhost, in short
+## Hostinger access
 
-- **:80** redirects everything to HTTPS.
-- **:443** serves `/var/www/volcano` with `AllowOverride None` (so `.htaccess`
-  files are ignored — put directives in the vhost), blocks `/.git`, sets the
-  security headers and CSP, keeps the HTML shell and service worker
-  revalidating, and serves `/404.html` for missing pages.
-- **TLS** uses a Cloudflare Origin Certificate at
-  `/etc/ssl/cloudflare/volcano.magikh0e.pl.{pem,key}`, with the zone's SSL/TLS
-  mode at Full (strict). The cert files must exist before the vhost is enabled,
-  or `apache2ctl configtest` fails for every site.
+SSH from hPanel: the site's hosting, then **Advanced → SSH Access** (port 65002). The
+deploy key is `~/.ssh/id_hostinger_volcano`; its public half is added there. Settings
+go in `.env` (see `.env.example`). The deploy only accepts a target path ending in
+`/domains/volcano.magikh0e.com/public_html/`, because `--delete-after` removes
+anything there that isn't in this repo.
 
-## Changing the vhost
+## The old address
+
+Updating the moved page (from the repo root; the magikh0e.pl server's SSH settings
+are in `../magikh0e-website/.env`):
+
+```bash
+rsync -avz --delete-after deploy/pl-moved/ root@<server>:/var/www/volcano-moved/
+```
+
+Then purge `https://volcano.magikh0e.pl/` and `/service-worker.js` in Cloudflare
+(magikh0e.pl zone). Changing the vhost:
 
 ```bash
 cp -p /etc/apache2/sites-available/volcano.magikh0e.pl.conf /root/volcano.magikh0e.pl.conf.bak-$(date +%Y%m%d%H%M%S)
@@ -38,12 +59,15 @@ From the repo root (see `.env.example` for configuration):
 
 ```bash
 python tools/deploy.py --dry-run   # preview: files to upload / delete
-python tools/deploy.py             # rsync + Cloudflare purge + live check
+python tools/deploy.py             # smoke test + rsync to Hostinger + live check
 ```
 
 The script refuses to deploy if app files changed without a `CACHE` bump in
 `service-worker.js`, and stamps `sitemap.xml` dates from git on every run. Before
 uploading it runs the smoke test (below); a failure stops the deploy.
+
+`tools/make_og.py` re-renders `og.jpg`, the link-preview image, when its text or the
+app's look changes.
 
 ## Releasing a version
 

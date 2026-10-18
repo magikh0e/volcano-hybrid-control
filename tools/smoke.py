@@ -41,6 +41,9 @@ Checks:
   - a new version (served from a temporary copy of the site) shows the
     reload banner, hides it during a run, and Reload loads it; offline, the
     app still loads from the cache
+  - moving from volcano.magikh0e.pl: its "We've moved" page (deploy/pl-moved)
+    carries the browser's data to the new address in the link; there a fresh
+    browser gets all of it (and reloads into it), one with data of its own a merge
   - contrast: with the graph, summary and Undo bars, note editor, preset
     labels, update banner and demo banner on screen, every visible text in
     all six themes and every tab meets WCAG AA (4.5:1, or 3:1 for large text
@@ -447,10 +450,69 @@ class Smoke:
         ctx.close()
 
         self.check({"app", "help.html", "404.html"} <= self.greeted, f"console greeting on the app, Help and 404 pages ({', '.join(sorted(self.greeted))})")
+        self.move(browser)
         self.contrast(browser)
         self.update(browser)
         self.check(not self.errors, "no script errors" + ("".join("\n          " + e for e in self.errors[:8]) if self.errors else ""))
 
+
+    def move(self, browser):
+        """The old address's moved page hands this browser's data to the new address."""
+        old_srv, old_base = serve(os.path.join(ROOT, "deploy", "pl-moved"))
+        try:
+            seed = """localStorage.setItem("volcano-workflows", JSON.stringify([{ id: "wfo", name: "Old one", actions: [{ type: "heatOff" }] }]));
+              localStorage.setItem("volcano-history", JSON.stringify([{ name: "Quick Bag 185 °C", started: "2026-09-01T18:00:00Z",
+                secs: 75, bags: 1, outcome: "complete", rating: 4, note: "Blue Dream" }]));
+              localStorage.setItem("volcano-presets", JSON.stringify([180, 190]));
+              localStorage.setItem("volcano-tpl-favs", JSON.stringify(["Sampler"]));
+              localStorage.setItem("volcano-theme", "light");"""
+
+            def forwarded(path, init):
+                ctx = browser.new_context(service_workers="block")
+                ctx.add_init_script(init)
+                # A stand-in for the new address; the #fragment stays in the page's URL, never in a request.
+                ctx.route("https://volcano.magikh0e.com/**", lambda route: route.fulfill(status=200, body="new address"))
+                page = ctx.new_page(); self.watch(page)
+                page.goto(old_base + path)
+                try:
+                    page.wait_for_url(re.compile(r"^https://volcano\.magikh0e\.com/"), timeout=8000)
+                    url = page.url
+                except Exception:
+                    url = ""
+                ctx.close()
+                return url
+
+            url = forwarded("/", seed)
+            self.check(url.startswith("https://volcano.magikh0e.com/#move="), f"the old address forwards with the data ({url[:60]}…)")
+            demo = forwarded("/?demo", "")
+            self.check(demo == "https://volcano.magikh0e.com/?demo", f"…and keeps ?demo ({demo})")
+            payload = url.split("#", 1)[1] if "#" in url else ""
+
+            # A browser new to the new address: everything comes along, after one reload
+            ctx = browser.new_context(service_workers="block")
+            ctx.add_init_script(INIT + NO_BT)
+            page = ctx.new_page(); self.watch(page)
+            page.goto(f"{self.base}/#{payload}")
+            page.wait_for_function("() => /came along/.test(document.getElementById('v-status').textContent)", timeout=10000)
+            got = page.evaluate("""() => ({ wf: JSON.parse(localStorage.getItem("volcano-workflows")).map((w) => w.name),
+              note: JSON.parse(localStorage.getItem("volcano-history"))[0].note, theme: document.documentElement.dataset.theme,
+              favs: localStorage.getItem("volcano-tpl-favs"), hash: location.hash })""")
+            self.check(got["wf"] == ["Old one"] and got["note"] == "Blue Dream" and got["theme"] == "light"
+                       and "Sampler" in got["favs"] and got["hash"] == "", f"a fresh browser gets everything ({got})")
+            ctx.close()
+
+            # A browser with data of its own here: a merge
+            ctx = browser.new_context(service_workers="block")
+            ctx.add_init_script(INIT + NO_BT + """if (!sessionStorage.getItem("seeded")) { sessionStorage.setItem("seeded", "1");
+              localStorage.setItem("volcano-workflows", JSON.stringify([{ id: "wfm", name: "Mine", actions: [{ type: "heatOff" }] }])); }""")
+            page = ctx.new_page(); self.watch(page)
+            page.goto(f"{self.base}/#{payload}")
+            page.wait_for_function("() => JSON.parse(localStorage.getItem('volcano-workflows')).length === 2", timeout=10000)
+            names = page.evaluate("JSON.parse(localStorage.getItem('volcano-workflows')).map((w) => w.name)")
+            self.check(names == ["Mine", "Old one"], f"a browser with its own data gets a merge ({names})")
+            ctx.close()
+        finally:
+            old_srv.shutdown()
 
     def contrast(self, browser):
         """Every new and old piece of UI on screen at once, measured in all themes and tabs."""
@@ -534,10 +596,13 @@ class Smoke:
             page.click("#v-update .v-btn")
             page.wait_for_function("() => (document.querySelector('[data-app-version]') || {}).textContent === 'v9.9.9'", timeout=10000)
             self.check(True, "Reload loads the new version")
+            before = len(self.errors)
             ctx.set_offline(True)
             page.reload()
             page.wait_for_function("() => (document.querySelector('[data-app-version]') || {}).textContent === 'v9.9.9'", timeout=10000)
             ctx.set_offline(False)
+            # requests cut off by going offline on purpose aren't errors in the app
+            self.errors[before:] = [e for e in self.errors[before:] if "net::ERR_" not in e]
             self.check(page.is_visible("#v-connect"), "offline, the app still loads from the cache")
             ctx.close()
         finally:

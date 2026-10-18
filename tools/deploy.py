@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-Deploy volcano.magikh0e.pl: rsync the app to its docroot, then purge
-Cloudflare for the files that changed.
+Deploy volcano.magikh0e.com: rsync the app to its folder on Hostinger, then
+(optionally) purge Cloudflare for the files that changed.
 
-No build step -- the repo root *is* the site. Transport and Cloudflare
-handling mirror magikh0e-website/tools/deploy.py (same box, same zone).
+No build step -- the repo root *is* the site, including its .htaccess.
 
 Usage:
     python tools/deploy.py              # sw-cache check + rsync + purge + live check
@@ -14,19 +13,21 @@ Usage:
     python tools/deploy.py --no-sw-check  # deploy even if CACHE wasn't bumped
     python tools/deploy.py --no-smoke     # skip the smoke test
 
-Configuration (environment, or .env at this repo root; anything not set
-there falls back to ../magikh0e-website/.env so the SSH + Cloudflare
-settings don't have to be duplicated):
-    VOLCANO_DEPLOY_PATH  required, the subdomain's docroot on the server.
-                         Deliberately NOT read from DEPLOY_PATH -- that's the
-                         main site's docroot, and rsync --delete-after into it
-                         would wipe magikh0e.pl.
-    DEPLOY_HOST          required, e.g. root@45.63.91.201
-    DEPLOY_PORT          default 22
-    DEPLOY_KEY           optional, path to ssh key file
+Configuration (environment, or .env at this repo root):
+    VOLCANO_DEPLOY_HOST  required, user@host of the Hostinger account
+    VOLCANO_DEPLOY_PORT  default 22 (Hostinger uses 65002)
+    VOLCANO_DEPLOY_KEY   optional, path to the ssh key file
+    VOLCANO_DEPLOY_PATH  required, the site's public_html. The account hosts other
+                         sites too and rsync --delete-after removes anything not in
+                         this repo, so the path must end in
+                         /volcano.magikh0e.com/public_html (checked below).
     DEPLOY_SSH           optional, explicit ssh binary for rsync -e
-    CF_ZONE_ID           optional, enables purge (magikh0e.pl zone covers the subdomain)
-    CF_API_TOKEN         optional, required for purge
+    VOLCANO_CF_ZONE_ID   optional, the magikh0e.com zone; enables the purge, only
+                         useful while the record is proxied through Cloudflare
+    VOLCANO_CF_API_TOKEN optional, a token with Cache Purge on that zone
+                         (falls back to CF_API_TOKEN)
+Settings for the main site are read from ../magikh0e-website/.env only as a
+fallback for DEPLOY_SSH and CF_API_TOKEN; its host and paths are never used.
 
 Sitemap: every run first sets sitemap.xml's <lastmod> dates from git (the
 last commit touching each page, or today if it has uncommitted edits).
@@ -58,16 +59,15 @@ from urllib.error import HTTPError, URLError
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SITE_ENV = os.path.abspath(os.path.join(ROOT, "..", "magikh0e-website", ".env"))
 
-SITE_BASE = "https://volcano.magikh0e.pl"
+SITE_BASE = "https://volcano.magikh0e.com"
 
 CF_PURGE_BATCH = 30
 
-# Docroots this script must never sync into (main site).
-FORBIDDEN_PATHS = {"/", "/var/www/", "/var/www/html/"}
+# The only place this script will sync into: the site's own public_html.
+DEPLOY_PATH_RE = re.compile(r"^/home/[^/]+/domains/volcano\.magikh0e\.com/public_html/$")
 
 # Repo-only files. Anything excluded is also protected from --delete-after,
-# which is why server-side-only files (.htaccess, ACME challenges) are
-# listed here too: they aren't in the repo but must survive a deploy.
+# which is why the server's certificate checks (.well-known) are listed too.
 EXCLUDES = [
     ".git/",
     ".github/",
@@ -84,7 +84,6 @@ EXCLUDES = [
     "*.pyc",
     ".DS_Store",
     "Thumbs.db",
-    "/.htaccess",
     "/.well-known/",
 ]
 
@@ -182,7 +181,7 @@ def rsync(host, port, key, remote_path, dry_run):
     ssh_bin, wants_cyg = find_ssh_bin()
     ssh_bin = ssh_bin.replace("\\", "/")
     rsh = f'"{ssh_bin}"' if " " in ssh_bin else ssh_bin
-    rsh += f" -p {port}"
+    rsh += f" -p {port} -o StrictHostKeyChecking=accept-new"
     if key:
         k = to_cygwin_path(key) if wants_cyg else key
         rsh += f' -i "{k}"' if " " in k else f" -i {k}"
@@ -230,7 +229,7 @@ def purge_urls(paths):
 def cf_purge(zone_id, token, urls):
     print("\n== cloudflare purge ==")
     if not zone_id or not token:
-        print("  CF_ZONE_ID or CF_API_TOKEN not set -- skipping")
+        print("  VOLCANO_CF_ZONE_ID not set (the record isn't proxied) -- skipping")
         return
     if not urls:
         print("  nothing transferred -- nothing to purge")
@@ -368,9 +367,11 @@ def main():
         check_live()
         return
 
-    host = cfg("DEPLOY_HOST", required=True)
-    port = cfg("DEPLOY_PORT", "22")
-    key = cfg("DEPLOY_KEY")
+    host = cfg("VOLCANO_DEPLOY_HOST", required=True)
+    port = cfg("VOLCANO_DEPLOY_PORT", "22")
+    key = cfg("VOLCANO_DEPLOY_KEY")
+    if key:
+        key = os.path.expanduser(key)
     remote_path = cfg("VOLCANO_DEPLOY_PATH", required=True)
     # Git Bash rewrites /var/... env vars into C:/Program Files/Git/var/...
     # before Python sees them, which would sneak past the forbidden-path
@@ -381,10 +382,9 @@ def main():
               file=sys.stderr)
         sys.exit(2)
     remote_path = posixpath.normpath(remote_path) + "/"
-    if remote_path in FORBIDDEN_PATHS or remote_path == "//":
-        print(f"ERROR: VOLCANO_DEPLOY_PATH={remote_path} is the main site / a parent "
-              "dir; --delete-after would wipe it. Point it at the subdomain docroot.",
-              file=sys.stderr)
+    if not DEPLOY_PATH_RE.match(remote_path):
+        print(f"ERROR: VOLCANO_DEPLOY_PATH={remote_path} isn't .../domains/volcano.magikh0e.com/"
+              "public_html/; --delete-after would remove other files there.", file=sys.stderr)
         sys.exit(2)
 
     # Always preview first: feeds the SW guard, and on --dry-run it's the result.
@@ -418,7 +418,7 @@ def main():
     if args.skip_purge:
         print("\n(skipped Cloudflare purge per --skip-purge)")
     else:
-        cf_purge(cfg("CF_ZONE_ID"), cfg("CF_API_TOKEN"), purge_urls(sent))
+        cf_purge(cfg("VOLCANO_CF_ZONE_ID"), cfg("VOLCANO_CF_API_TOKEN") or cfg("CF_API_TOKEN"), purge_urls(sent))
 
     check_live()
 

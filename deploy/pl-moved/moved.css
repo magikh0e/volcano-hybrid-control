@@ -1,0 +1,8 @@
+html, body { margin: 0; background: #0a0a0a; color: #e9e9e9; }
+body { font: 16px/1.6 ui-monospace, "JetBrains Mono", "Cascadia Code", Consolas, monospace; }
+main { max-width: 34rem; margin: 0 auto; padding: 3rem 1.2rem; text-align: center; }
+img { border-radius: 18px; }
+h1 { color: #e8892e; font-size: 1.5rem; line-height: 1.3; }
+.new { font-size: 1.3rem; }
+a { color: #e8892e; }
+.small { color: #9a9a9a; font-size: 0.9rem; }

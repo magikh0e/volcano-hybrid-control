@@ -2107,6 +2107,10 @@
   async function wfRestore(file) {
     let data;
     try { data = JSON.parse(await file.text()); } catch (e) { status("That file isn't a valid backup.", "err"); return; }
+    wfRestoreData(data, "Restore from " + file.name + "?");
+  }
+  // Merge a backup (or what the old address passed along) into this browser's data, after asking.
+  function wfRestoreData(data, question, quiet) {
     const list = Array.isArray(data) ? data : (data && Array.isArray(data.workflows) ? data.workflows : null);
     if (!list) { status("No workflows found in that file.", "warn"); return; }
     const key = (w) => (w.name || "") + "\u0000" + JSON.stringify(w.actions || []);
@@ -2130,7 +2134,7 @@
     if (newPresets && JSON.stringify(newPresets) === JSON.stringify(presets)) newPresets = null;   // already the same
     let newLabels = data && data.presetLabels ? cleanLabels(data.presetLabels) : null;
     if (newLabels && (!Object.keys(newLabels).length || JSON.stringify(newLabels) === JSON.stringify(presetLabels))) newLabels = null;
-    const msg = "Restore from " + file.name + "?\n\n" +
+    const msg = question + "\n\n" +
       "• Add " + plural(fresh.length, "workflow") + (incoming.length > fresh.length ? " (" + (incoming.length - fresh.length) + " already here, skipped)" : "") + "\n" +
       (newPresets && newPresets.length ? "• Replace your presets with the backup's " + newPresets.length + "\n" : "") +
       (newHist.length ? "• Add " + plural(newHist.length, "history entry").replace("entrys", "entries") + "\n" : "") +
@@ -2138,7 +2142,10 @@
       (newLabels ? "• Use the backup's preset labels\n" : "") +
       (noteFill.length ? "• Add notes to " + plural(noteFill.length, "history entry").replace("entrys", "entries") + "\n" : "") +
       "\nNothing else is removed.";
-    if (!fresh.length && !(newPresets && newPresets.length) && !newHist.length && !newFavs.length && !newLabels && !noteFill.length) { status("Nothing new in that backup.", "ok"); return; }
+    if (!fresh.length && !(newPresets && newPresets.length) && !newHist.length && !newFavs.length && !newLabels && !noteFill.length) {
+      if (!quiet) status("Nothing new in that backup.", "ok");
+      return;
+    }
     if (!confirm(msg)) return;
     fresh.forEach((w) => workflows.push({ id: wfNewId(), name: w.name, actions: w.actions }));
     saveWorkflows();
@@ -2270,6 +2277,44 @@
   }
 
   // If the page was opened with a #wf=… share link, offer to import it.
+  // ---- arriving from the old address ----------------------------------------------------------
+  // volcano.magikh0e.pl's "We've moved" page passes that browser's saved data along in the link
+  // (#move=…, never sent to a server). New here: copy it all after asking, and reload so every
+  // setting takes effect. Data already here: merge it like a backup.
+  const OLD_HOST = "volcano.magikh0e.pl";
+  const MOVE_DATA_KEYS = ["volcano-workflows", "volcano-history", "volcano-presets", "volcano-preset-labels", "volcano-tpl-favs"];
+  function readMove() {
+    const m = /[#&]move=([^&]+)/.exec(location.hash || "");
+    if (!m || DEMO) return null;
+    try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ }
+    try {
+      const o = JSON.parse(b64urlDecode(m[1]));
+      if (!o || o.app !== BACKUP_APP || !o.storage || typeof o.storage !== "object") throw new Error("not ours");
+      const s = {};
+      Object.keys(o.storage).forEach((k) => { if (/^volcano-[\w-]+$/.test(k) && typeof o.storage[k] === "string") s[k] = o.storage[k]; });
+      return Object.keys(s).length ? s : null;
+    } catch (e) { status("Couldn't read the data passed along from " + OLD_HOST + ".", "err"); return null; }
+  }
+  function moveAsBackup(s) {
+    const get = (k, d) => { try { const v = JSON.parse(s[k]); return v == null ? d : v; } catch (e) { return d; } };
+    return { workflows: get("volcano-workflows", []), presets: get("volcano-presets", null),
+      presetLabels: get("volcano-preset-labels", null), history: get("volcano-history", []), favourites: get("volcano-tpl-favs", []) };
+  }
+  // Returns true when it reloads the page (the caller stops).
+  function importMove(s) {
+    const haveData = MOVE_DATA_KEYS.some((k) => store.getItem(k) != null);
+    if (haveData) { setTimeout(() => wfRestoreData(moveAsBackup(s), "Bring over your data from " + OLD_HOST + "?", true), 0); return false; }
+    const b = moveAsBackup(s), n = (a) => (Array.isArray(a) ? a.length : 0);
+    if (!confirm("Welcome to the new address. Bring over what this browser saved on " + OLD_HOST + "?\n\n" +
+        "• " + plural(n(b.workflows), "workflow") + "\n" +
+        "• " + plural(n(b.history), "history entry").replace("entrys", "entries") + "\n" +
+        "• Presets, favourites, theme and other settings")) return false;
+    Object.keys(s).forEach((k) => { try { (k === "volcano-theme" || k === "volcano-tab" ? localStorage : store).setItem(k, s[k]); } catch (e) { /* ignore */ } });
+    try { sessionStorage.setItem("volcano-moved-in", "1"); } catch (e) { /* ignore */ }
+    location.replace(location.pathname + location.search);
+    return true;
+  }
+
   function importSharedWorkflow() {
     const m = /[#&]wf=([^&]+)/.exec(location.hash || "");
     if (!m) return;
@@ -2361,6 +2406,8 @@
       const p = $("v-panel"); if (p) p.hidden = true;
       return;
     }
+    const moved = readMove();
+    if (moved && importMove(moved)) return;
     showTarget();
     presets = loadPresets();
     presetLabels = loadLabels();
@@ -2465,6 +2512,12 @@
       connect().then(() => { if (svc && !heatOn) toggleHeat(); });
     } else status("Ready. Click Connect and pick your Volcano.");
     setTimeout(importSharedWorkflow, 0);   // offer to import a #wf=… share link, if present
+    try {
+      if (sessionStorage.getItem("volcano-moved-in")) {
+        sessionStorage.removeItem("volcano-moved-in");
+        status("Your workflows, history and settings came along from " + OLD_HOST + ". Welcome to the new address.", "ok");
+      }
+    } catch (e) { /* ignore */ }
     showWhatsNew();
   }
 

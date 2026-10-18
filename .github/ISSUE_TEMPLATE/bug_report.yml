@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting. A quick look at [Help & FAQ](https://volcano.magikh0e.pl/help.html) first may already have the answer, especially for connection problems.
+        Thanks for reporting. A quick look at [Help & FAQ](https://volcano.magikh0e.com/help.html) first may already have the answer, especially for connection problems.
   - type: input
     id: version
     attributes:

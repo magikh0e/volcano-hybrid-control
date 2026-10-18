@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://volcano.magikh0e.pl/sitemap.xml
+Sitemap: https://volcano.magikh0e.com/sitemap.xml
