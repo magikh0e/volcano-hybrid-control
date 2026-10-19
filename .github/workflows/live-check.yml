@@ -1,0 +1,48 @@
+name: Live check
+
+# Once a day, tools/live_check.py checks volcano.magikh0e.com, the old address and
+# volcano.tropicalrootsmaui.com the way a visitor would. A failure opens an issue (or
+# comments on the open one); the next passing run closes it.
+on:
+  schedule:
+    - cron: "17 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install playwright
+      - id: check
+        continue-on-error: true
+        run: python tools/live_check.py --report live-report.md
+      - name: Open or update the issue
+        if: steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=$(gh issue list --state open --search 'in:title "Live site check failed"' --json number --jq '.[0].number')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --body-file live-report.md
+          else
+            gh issue create --title "Live site check failed" --label bug --body-file live-report.md
+          fi
+      - name: Close the issue once it passes again
+        if: steps.check.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=$(gh issue list --state open --search 'in:title "Live site check failed"' --json number --jq '.[0].number')
+          if [ -n "$n" ]; then gh issue close "$n" --comment "Passing again."; fi
+      - name: Mark the run failed
+        if: steps.check.outcome == 'failure'
+        run: exit 1

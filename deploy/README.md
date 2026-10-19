@@ -16,6 +16,12 @@ Server-side setup for the app. This folder is kept in git for reference and is
   the link's #fragment, plus a service worker that retires the old offline copy.
   Every other URL redirects permanently (301) to the same path on the new address.
   The previous app files are kept in `/var/www/volcano/` for a rollback.
+- **volcano.tropicalrootsmaui.com**: a Cloudflare Redirect Rule in the
+  tropicalrootsmaui.com zone sends every request (301, path and query string kept) to
+  the same page on volcano.magikh0e.com. The DNS record must stay proxied.
+
+`tools/live_check.py` checks all three daily (`.github/workflows/live-check.yml`) and
+opens an issue if something fails.
 
 ## What's here
 
