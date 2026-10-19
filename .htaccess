@@ -20,6 +20,19 @@ AddCharset utf-8 .js .css .md .webmanifest
   RewriteRule (^|/)\.(?!well-known/) - [F,L]
 </IfModule>
 
+# Hostinger's defaults give scripts and styles a cache lifetime of hours to days. The
+# app's own scripts and styles get none (here and in the headers below), so browsers
+# revalidate them and a release can't pair new pages with old scripts. Images keep the
+# long caching. Behind Cloudflare, its Browser Cache TTL must be "Respect Existing
+# Headers" for this to reach browsers.
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType application/javascript "access plus 0 seconds"
+  ExpiresByType application/x-javascript "access plus 0 seconds"
+  ExpiresByType text/javascript "access plus 0 seconds"
+  ExpiresByType text/css "access plus 0 seconds"
+</IfModule>
+
 <IfModule mod_headers.c>
   # Security headers. A fully self-contained app: no third-party anything, no
   # inline script or style. (Web Bluetooth isn't governed by CSP.)
@@ -30,7 +43,7 @@ AddCharset utf-8 .js .css .md .webmanifest
   Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; object-src 'none'"
 
   # The service worker, pages and changelog always revalidate, so a release shows up at once
-  <FilesMatch "service-worker\.js$">
+  <FilesMatch "\.(js|css)$">
     Header set Cache-Control "no-cache"
   </FilesMatch>
   <FilesMatch "\.(html|webmanifest|md)$">

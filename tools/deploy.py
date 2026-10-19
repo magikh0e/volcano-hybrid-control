@@ -88,9 +88,9 @@ EXCLUDES = [
 ]
 
 SW_FILE = "service-worker.js"
-# Files the offline cache doesn't hold (crawlers, link previews, and CHANGELOG.md,
-# which the app fetches for its "What's new" card): no CACHE bump needed.
-SW_EXEMPT = {"robots.txt", "sitemap.xml", "og.jpg", "404.html", "CHANGELOG.md"}
+# Files the offline cache doesn't hold (crawlers, link previews, CHANGELOG.md, which
+# the app fetches for its "What's new" card, and the server's .htaccess): no CACHE bump needed.
+SW_EXEMPT = {"robots.txt", "sitemap.xml", "og.jpg", "404.html", "CHANGELOG.md", ".htaccess"}
 SITEMAP = "sitemap.xml"
 LOC_RE = re.compile(r"(<loc>([^<]+)</loc>\s*<lastmod>)([^<]*)(</lastmod>)")
 SW_CACHE_RE = re.compile(r'const\s+CACHE\s*=\s*"([^"]+)"')
