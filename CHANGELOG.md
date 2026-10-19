@@ -9,6 +9,13 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [3.0.2] - 2026-10-19
+
+### Fixed
+
+- The Help page no longer jumps while it loads on phones: the version script runs before the
+  page first appears again, so the version badge doesn't reflow the title.
+
 ## [3.0.1] - 2026-10-19
 
 ### Fixed
@@ -332,7 +339,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v3.0.1...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v3.0.2...HEAD
+[3.0.2]: https://github.com/magikh0e/volcano-hybrid-control/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/magikh0e/volcano-hybrid-control/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.2...v3.0.0
 [2.4.2]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.1...v2.4.2
