@@ -134,7 +134,16 @@
   const DEV_LIGHTS = { "v-heatled": ["v-dev-heat", "v-dev-heatdot"], "v-fanled": ["v-dev-air", "v-dev-fanicon"] };
   // The drawing's live state: attachment for the Bags/Whip switch, fan (vapor),
   // heating (pulsing panel) and at temperature (steady glow).
+  // The screen is a button (type an exact target); its name says what it shows.
+  function devScreenLabel() {
+    const scr = $("v-dev-screen"); if (!scr) return;
+    const txt = (id) => { const n = $(id); return n ? n.textContent.trim() : ""; };
+    const cur = txt("v-cur");
+    scr.setAttribute("aria-label", [cur === "---" ? "" : cur, txt("v-set"), txt("v-dev-step")].filter(Boolean).join(" ")
+      + ". Type an exact target temperature");
+  }
   function devVisual() {
+    devScreenLabel();
     const svg = $("v-dev-svg"); if (!svg) return;
     const mode = typeof devMode === "string" ? devMode : "bag";
     svg.classList.toggle("vd-mode-bag", mode === "bag");
@@ -1406,6 +1415,7 @@
   const BASE_TITLE = document.title;
   function wfSetRun(txt) {
     const ds = $("v-dev-step"); if (ds) ds.textContent = wfRunning ? devShortStep(txt) : "";
+    devScreenLabel();
     if (wfRunning) document.title = devShortStep(txt) + " · Volcano";   // progress visible from other tabs
     wfRunText = txt;
     ["v-wf-run", "v-dev-runtext"].forEach((id) => { const el = $(id); if (el) el.textContent = txt; });

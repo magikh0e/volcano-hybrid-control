@@ -9,6 +9,16 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-10-19
+
+### Fixed
+
+- Screen readers: the tab list holds only the four tabs (Help is a link beside it), the drawing's
+  HEAT and AIR buttons are announced with the words they show, and the temperature screen's name
+  follows what it displays.
+- Faster first paint on phones: the header logo comes in the size it's shown at, and the version
+  script no longer holds up the page.
+
 ## [3.0.0] - 2026-10-18
 
 ### Changed
@@ -322,7 +332,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v3.0.1...HEAD
+[3.0.1]: https://github.com/magikh0e/volcano-hybrid-control/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.2...v3.0.0
 [2.4.2]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.1...v2.4.2
 [2.4.1]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.0...v2.4.1

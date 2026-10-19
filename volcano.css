@@ -367,6 +367,7 @@ hr { border: 0; border-top: 1px solid var(--edge); margin: 1.6rem 0; }
   border-color: var(--edge); background: var(--panel);
   margin-bottom: -1px;                 /* sit on top of the row's border */
 }
+.v-tablist { display: contents; }     /* the tabs lay out in .v-tabs, with Help beside them */
 .v-tab-link { margin-left: auto; }     /* push Help to the right */
 .v-tabpanel { margin: 0.4rem 0; }
 .v-subhead {

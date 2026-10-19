@@ -27,7 +27,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0a0a0a">
 <script data-cfasync="false" src="theme.js"></script>
-<script data-cfasync="false" src="version.js"></script>
+<script data-cfasync="false" src="version.js" defer></script>
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -56,7 +56,7 @@
 <body>
 
 <header class="site-head">
-<img class="logo" src="logo.webp" width="144" height="144" alt="Volcano Hybrid Web App logo">
+<img class="logo" src="logo-144.webp" srcset="logo-144.webp 1x, logo-288.webp 2x, logo.webp 3x" width="144" height="144" alt="Volcano Hybrid Web App logo">
 <div class="site-head-text">
 <h1>Volcano Hybrid Web App <a class="v-verbadge" data-app-version href="https://github.com/magikh0e/volcano-hybrid-control/blob/main/CHANGELOG.md" rel="noopener">changelog</a></h1>
 <p class="v-tagline">by <a href="https://magikh0e.pl/" rel="noopener">magikh0e</a> &middot; <a href="https://github.com/magikh0e/volcano-hybrid-control" rel="noopener">source</a></p>
@@ -84,11 +84,13 @@ desktop Chrome / Edge / Opera or Android Chrome, or <a href="?demo">try the demo
   <div id="v-status" aria-live="polite">Ready.</div>
   <p class="v-session-line"><span class="v-session-label">Session</span> <span id="v-session">&mdash;</span></p>
 
-  <nav class="v-tabs" role="tablist" aria-label="Sections">
+  <nav class="v-tabs" aria-label="Sections">
+    <div class="v-tablist" role="tablist">
     <button class="v-tab" type="button" data-tab="control" role="tab" id="tab-control" aria-controls="panel-control" aria-selected="true">Control</button>
     <button class="v-tab" type="button" data-tab="settings" role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false">Settings</button>
     <button class="v-tab" type="button" data-tab="workflows" role="tab" id="tab-workflows" aria-controls="panel-workflows" aria-selected="false">Workflows</button>
     <button class="v-tab" type="button" data-tab="console" role="tab" id="tab-console" aria-controls="panel-console" aria-selected="false">Console</button>
+    </div>
     <a class="v-tab v-tab-link" href="help.html" target="_blank" rel="noopener">Help &#8599;</a>
   </nav>
 
@@ -133,13 +135,13 @@ desktop Chrome / Edge / Opera or Android Chrome, or <a href="?demo">try the demo
       <g class="vd-btn" id="v-dev-minus" role="button" tabindex="0" aria-keyshortcuts="-" aria-label="Lower target">
         <rect x="104" y="196" width="48" height="28" rx="14"/><text x="128" y="216" text-anchor="middle">&#8722;</text>
       </g>
-      <g class="vd-btn vd-small" id="v-dev-heat" role="button" tabindex="0" aria-keyshortcuts="H" aria-pressed="false" aria-label="Heater">
+      <g class="vd-btn vd-small" id="v-dev-heat" role="button" tabindex="0" aria-keyshortcuts="H" aria-pressed="false" aria-label="HEAT (heater)">
         <rect x="104" y="230" width="48" height="20" rx="10"/><text x="128" y="244" text-anchor="middle">HEAT</text>
       </g>
       <g class="vd-btn" id="v-dev-plus" role="button" tabindex="0" aria-keyshortcuts="+" aria-label="Raise target">
         <rect x="268" y="196" width="48" height="28" rx="14"/><text x="292" y="216" text-anchor="middle">+</text>
       </g>
-      <g class="vd-btn vd-small" id="v-dev-air" role="button" tabindex="0" aria-keyshortcuts="A" aria-pressed="false" aria-label="Fan">
+      <g class="vd-btn vd-small" id="v-dev-air" role="button" tabindex="0" aria-keyshortcuts="A" aria-pressed="false" aria-label="AIR (fan)">
         <rect x="268" y="230" width="48" height="20" rx="10"/><text x="292" y="244" text-anchor="middle">AIR</text>
       </g>
       <text class="vd-state" id="v-dev-state" x="210" y="300" text-anchor="middle">not connected</text>
