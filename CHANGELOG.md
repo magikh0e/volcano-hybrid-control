@@ -9,6 +9,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+## [3.0.3] - 2026-11-18
+
 ### Changed
 
 - The footer, Help page and 404 page link only to Buy Me a Coffee now; the Patreon link is gone.
@@ -343,7 +345,8 @@ and polish. The version shown in the app and on the Help page comes from `versio
 - Help page with FAQ, a boiling-point temperature guide and BLE protocol notes.
 - Installable as an offline PWA; hosted on its own subdomain.
 
-[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v3.0.2...HEAD
+[Unreleased]: https://github.com/magikh0e/volcano-hybrid-control/compare/v3.0.3...HEAD
+[3.0.3]: https://github.com/magikh0e/volcano-hybrid-control/compare/v3.0.2...v3.0.3
 [3.0.2]: https://github.com/magikh0e/volcano-hybrid-control/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/magikh0e/volcano-hybrid-control/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/magikh0e/volcano-hybrid-control/compare/v2.4.2...v3.0.0
