@@ -9,6 +9,10 @@ and polish. The version shown in the app and on the Help page comes from `versio
 
 ## [Unreleased]
 
+### Changed
+
+- The footer, Help page and 404 page link only to Buy Me a Coffee now; the Patreon link is gone.
+
 ## [3.0.2] - 2026-10-19
 
 ### Fixed
